@@ -1,7 +1,6 @@
 import pandas as pd
 pd.options.mode.chained_assignment = None
 import numpy as np
-#np.warnings.simplefilter(action='ignore', category=FutureWarning)
 import sys
 from datetime import datetime, date
 sys.path.insert(1, 'Ent_generator')
@@ -16,6 +15,7 @@ def getting_system_paths():
 
     root_path = input('Please inform root path: \n')
     root_path = root_path.replace('\\', '/')
+    root_path = str(root_path)
 
     country = input('Please inform the country of the distrbutor: \n')
     country = country.lower()
@@ -31,7 +31,7 @@ def getting_system_paths():
     customer_catalog_file_path = 'Catalogs/Customer_catalog/' + country + '_customer_catalog.xlsx'
 
     system_paths = [sales_file_path, pebac_master_data_product_file_path, 
-            product_master_path, product_txt_file_distributor_path, customer_catalog_file_path]
+            product_master_path, product_txt_file_distributor_path, customer_catalog_file_path, root_path]
 
     return system_paths
 
@@ -66,7 +66,6 @@ def loading_dataframes(system_paths):
     try:
         try:
             df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns, sep=';', low_memory=False, dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str }).fillna('')
-            #df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns, sep=';', low_memory=False, keep_default_na=False).fillna('')
         except pd.errors.ParserError as err:
             logger.logger.error('{}'.format(err))
             sys.exit(err)
@@ -109,7 +108,7 @@ def loading_dataframes(system_paths):
 
             df_product_txt_file_distributor = pd.read_csv(product_txt_file_distributor_path, low_memory=False, 
             sep=';', names=product_txt_file_columns, header=None, 
-            dtype={ 'Product Code':str, 'Bottles por Physical Case':float, 'Bottles por Physical Case':str }).fillna('')
+            dtype={ 'Product Code':str, 'Bottles por Physical Case':str }).fillna('')
             
         except pd.errors.ParserError as err:
             logger.logger.error('{}'.format(err))
@@ -167,10 +166,6 @@ def sanitizing_sales_file(df_sales):
     
     df_sales['Product Code'] = df_sales['Product Code'].str.lstrip('0')
     df_sales['Quantity'] = pd.to_numeric(df_sales['Quantity']).fillna(0)
-    #df_sales['Quantity'] = df_sales['Quantity'].astype(float).fillna(0, inplace=True)
-    #df_sales['Product Code'] = df_sales['Product Code'].astype(str).fillna('')
-    #df_sales['Invoice Date'] = df_sales['Invoice Date'].astype(str).fillna('')
-    #df_sales['Store code'] = df_sales['Store code'].astype(str).fillna('', inplace=True)
     df_sales['Store code'] = df_sales['Store code'].str.strip()
 
     return df_sales
@@ -257,7 +252,8 @@ def searching_diageo_sku(df_sales, df_product_master, df_entrepidus):
                 diageo_sku = df_product_master.loc[(single_distributor, single_product_by_distributor), 'Diageo_Sku'].values[0]
                 df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = diageo_sku
             except:
-                df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = 'NOT FOUND'
+                df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = '0000 - NOT FOUND'
+                print('{} - New product found'.format(single_product_by_distributor))
                 logger.logger.warning('{} - Product not found'.format(single_product_by_distributor))
 
     df_entrepidus.reset_index(inplace = True)
@@ -315,7 +311,7 @@ def calculating_quantity(df_entrepidus, df_product_txt_file_distributor):
             single_product = str(single_product)
 
             try:
-                multiplicative_factor = df_product_txt_file_distributor.loc[( single_distributor , single_product ), 'Bottles por Physical Case'] #Changed index from tuple to array (wrapped by [])
+                multiplicative_factor = df_product_txt_file_distributor.loc[( single_distributor , single_product ), 'Bottles por Physical Case']
             except:
                 logger.logger.info('multiplicative_factor not found in PRODUCT.txt for Distributor - {} Product - {}'.format(single_distributor, single_product))
                 multiplicative_factor = 1
@@ -367,16 +363,15 @@ def getting_store_name(df_entrepidus, df_customer_catalog):
                 store_name = df_customer_catalog.loc[[(single_distributor, unique_store)], 'Store_name'].values
                 store_name = store_name[0]
             except:
-                logger.logger.warning('{} - Store not found'.format(unique_store))
                 new_unique_store = single_distributor + '|' + unique_store
                 new_stores.append(new_unique_store)
-                store_name = 'NOT FOUND'
+                store_name = '0000 - NOT FOUND'
 
             try:
                 filt_single_store_by_distributor = ((df_entrepidus['Diageo_dist_auxiliar_column'] == str(single_distributor)) & (df_entrepidus['Store Number'] == str(unique_store)))
                 df_entrepidus.loc[(filt_single_store_by_distributor), 'Store Name'] = store_name
             except:
-                logger.logger.warning('{} - Not possible record this store'.format(unique_store))
+                pass
 
     df_customer_catalog.reset_index(inplace=True)
 
@@ -407,7 +402,7 @@ def creating_new_stores_dataframe():
 # Registering new stores
 def registering_new_stores(new_stores, df_new_stores):
 
-    unique_stores = list(set(new_stores))
+    unique_stores = list(set(new_stores)) #Getting new stores - Filtering and getting unique values
 
     for individual_store in unique_stores:
 
@@ -478,19 +473,12 @@ def entrepidus_formatting(df_entrepidus):
 
     return df_entrepidus
 
-#Final formatting Pivot_Table - UNUSED
-def pivo_table_formatting(df_pivot_table):
-
-    df_pivot_table.reset_index(inplace=True)
-    print(df_pivot_table)
-    exit()
-    return df_pivot_table
-
-
 # Creating Excel flie -------
-def creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores):
+def creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores, root_path):
 
-    writer = pd.ExcelWriter('entrepidus.xlsx', engine='xlsxwriter')
+    excel_file_path = root_path + '/entrepidus_automated.xlsx'
+
+    writer = pd.ExcelWriter(excel_file_path, engine='xlsxwriter')
     df_entrepidus[df_entrepidus.columns].to_excel(writer, columns=df_entrepidus.columns ,merge_cells=False, index=False, sheet_name='entrepidus')
     df_pivot_table.to_excel(writer, merge_cells=False, sheet_name='pivot_table')
     df_new_stores.to_excel(writer, merge_cells=False, sheet_name='new_stores', index=False)
@@ -499,7 +487,9 @@ def creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores):
 def main():
 
     try:
-        system_paths = getting_system_paths()
+        system_paths_dataframes_and_root_path = getting_system_paths()
+        system_paths = system_paths_dataframes_and_root_path[:5]
+        root_path = system_paths_dataframes_and_root_path[5]
     except:
         logger.logger.error('Not possible  getting_system_paths')
         print('Not possible getting_system_paths')
@@ -646,7 +636,7 @@ def main():
 
     try:  
         print('Creating excel file...')
-        creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores)
+        creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores, root_path)
     except:
         logger.logger.error('Not possible executing function creating_excel_file')
         print('Not possible executing function creating_excel_file')
