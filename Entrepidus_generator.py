@@ -473,6 +473,20 @@ def entrepidus_formatting(df_entrepidus):
 
     return df_entrepidus
 
+def verifying_values_with_without_tax(df_entrepidus):
+
+    df_entrepidus['Sales Value wtax'] = pd.to_numeric(df_entrepidus['Sales Value wtax'], errors='coerce').fillna(0)
+    df_entrepidus['Sales Value wotax'] = pd.to_numeric(df_entrepidus['Sales Value wotax'], errors='coerce').fillna(0)
+
+    sum_value_with_tax = df_entrepidus['Sales Value wtax'].sum()
+    sum_value_without_tax = df_entrepidus['Sales Value wotax'].sum()
+
+    if ( sum_value_without_tax > sum_value_with_tax ):
+
+        df_entrepidus.rename(columns={ 'Sales Value wtax':'Sales Value wotax', 'Sales Value wotax':'Sales Value wtax' }, inplace=True)
+
+    return df_entrepidus
+
 # Creating Excel flie -------
 def creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores, root_path):
 
@@ -624,6 +638,13 @@ def main():
     except:
         logger.logger.error('Not possible executing function creating_pivot_table')
         print('Not possible creating Pivot Table')
+    
+    try:
+        print('Checking tax values columns')
+        df_entrepidus = verifying_values_with_without_tax(df_entrepidus)
+    except:
+        logger.logger.error('Not possible verifying_values_with_without_tax(df_entrepidus)')
+        print('Not possible verifying_values_with_without_tax(df_entrepidus')
 
     try:
         print('Formatting Entrepidus...')
