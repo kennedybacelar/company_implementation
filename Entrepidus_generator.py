@@ -8,7 +8,6 @@ import logger
 import os
 import warnings
 
-#Turning of some warnings - Verify it later
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 def getting_system_paths():
@@ -23,44 +22,26 @@ def getting_system_paths():
     sales_file_path = str(root_path) + '/sales.txt'
     sales_file_path = str(sales_file_path)
 
-    product_txt_file_distributor_path = str(root_path) + '/product.txt'
-    product_txt_file_distributor_path = str(product_txt_file_distributor_path)
-
     pebac_master_data_product_file_path = 'Catalogs/Product_catalog/pebac_ref_prod.xlsx'
     product_master_path = 'Catalogs/Product_catalog/product_master.xlsx'
     customer_catalog_file_path = 'Catalogs/Customer_catalog/' + country + '_customer_catalog.xlsx'
 
     system_paths = [sales_file_path, pebac_master_data_product_file_path, 
-            product_master_path, product_txt_file_distributor_path, customer_catalog_file_path, root_path]
+            product_master_path, customer_catalog_file_path, root_path]
 
     return system_paths
-
-def get_menu_options():
-    
-    option_multiply_quantity_by_product = input('Multiply quantity by product.txt file? Y or N\n')
-    option_multiply_quantity_by_product = option_multiply_quantity_by_product.lower()
-    if (option_multiply_quantity_by_product == 'y'):
-        chosen_option_multiply_quantity_by_product = True
-    else:
-        chosen_option_multiply_quantity_by_product = False
-
-    return chosen_option_multiply_quantity_by_product
 
 def loading_dataframes(system_paths):
 
     sales_file_path = system_paths[0]
     pebac_master_data_product_file_path = system_paths[1]
     product_master_path = system_paths[2]
-    product_txt_file_distributor_path = system_paths[3]
-    customer_catalog_file_path = system_paths[4]
+    customer_catalog_file_path = system_paths[3]
 
     df_sales_columns = ['Country', 'Diageo Customer ID', 'Diageo Customer Name', 
     'Invoice number', 'Type of Invoice',	'Invoice Date', 'Store code', 'Product Code', 
     'Quantity', 'Unit of measure', 'Total Amount WITHOUT TAX', 'Total Amount WITH TAX', 
     'Currency Code', 'Sales Representative Code']
-
-    product_txt_file_columns = ['Diageo Customer ID', 'Diageo Customer Name', 'Product Code',
-    'Product Name', 'Volume (Size in ml)', 'Bottles por Physical Case']
 
     #Loading Data Frame of Sales File
     try:
@@ -102,21 +83,6 @@ def loading_dataframes(system_paths):
         logger.logger.info('Not possible opening the file / setting index{}'.format(product_master_path))
         sys.exit('Not possible opening the file - {}'.format(product_master_path))
 
-    #Loading Data Frame of PRODUCT.txt
-    try:
-        try:
-
-            df_product_txt_file_distributor = pd.read_csv(product_txt_file_distributor_path, low_memory=False, 
-            sep=';', names=product_txt_file_columns, header=None, 
-            dtype={ 'Product Code':str, 'Bottles por Physical Case':str }).fillna('')
-            
-        except pd.errors.ParserError as err:
-            logger.logger.error('{}'.format(err))
-            sys.exit(err)
-    except:
-        logger.logger.error('Not possible opening the file{}'.format(product_txt_file_distributor_path))
-        sys.exit('Not possible opening the file - {}'.format(product_txt_file_distributor_path))
-
     #Loading Data Frame of Customer Catalog Per Country
     try:
         try:
@@ -146,17 +112,8 @@ def loading_dataframes(system_paths):
             'Group', 'PRDHA L1 Main Group', 'EU Size', 'Case Size'], inplace=True)
     except:
         logger.logger.info('Not possible dropping Columns of file - {}'.format(product_master_path))
-    
-    #Dropping unecessary columns of PRODUCT.txt field
-    try:
-        df_product_txt_file_distributor.drop(columns=['Diageo Customer Name', 
-        'Product Name', 'Volume (Size in ml)'], inplace=True)
-    except:
-        logger.logger.info('Not possible dropping Columns of file - {}'.format(product_txt_file_distributor_path))
 
-    
-
-    return [df_sales, df_pebac_product_reference, df_product_master, df_product_txt_file_distributor, df_customer_catalog]
+    return [df_sales, df_pebac_product_reference, df_product_master, df_customer_catalog]
 
 
 def sanitizing_sales_file(df_sales):
@@ -170,13 +127,11 @@ def sanitizing_sales_file(df_sales):
 
     return df_sales
 
-def sanitizing_product_file(df_product_txt_file_distributor):
+def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
 
-    df_product_txt_file_distributor['Bottles por Physical Case'] = df_product_txt_file_distributor['Bottles por Physical Case'].str.lstrip('0')
-    df_product_txt_file_distributor['Bottles por Physical Case'] = pd.to_numeric(df_product_txt_file_distributor['Bottles por Physical Case']).fillna(1)
-    df_product_txt_file_distributor['Product Code'] = df_product_txt_file_distributor['Product Code'].str.lstrip('0')
+    df_pebac_product_reference['Scale'] = pd.to_numeric(df_pebac_product_reference['Scale']).fillna(1)
 
-    return df_product_txt_file_distributor
+    return df_pebac_product_reference
 
 def declaring_entrepidus_df():
 
@@ -210,6 +165,7 @@ def setting_df_entrepidus_and_sales(df_entrepidus, df_sales):
         df_entrepidus['Chain SKU Code'] = df_sales['Product Code']
         df_entrepidus['Distributor'] = df_sales['Diageo Customer Name']
         df_entrepidus['Unit Sold'] = df_sales['Quantity']
+        df_entrepidus['Inventory Unit'] = 0
 
         #Auxiliar Columns - Won't be written into the excel file
         df_entrepidus['Diageo_dist_auxiliar_column'] = df_sales['Diageo Customer ID']
@@ -289,12 +245,12 @@ def filling_product_details(df_entrepidus, df_product_master):
 
 
 #Filling Entrepidus with quantities (Unit sold - after multiplying for the product tx)
-def calculating_quantity(df_entrepidus, df_product_txt_file_distributor):
+def calculating_quantity(df_entrepidus, df_pebac_product_reference):
 
-    df_product_txt_file_distributor.set_index(['Diageo Customer ID', 'Product Code'], inplace=True)
+    df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True)
     #Changing the first level of a multindex to String
-    df_product_txt_file_distributor.index = df_product_txt_file_distributor.index.set_levels(df_product_txt_file_distributor.index.levels[0].astype(str), level=0)
-    df_product_txt_file_distributor.index = df_product_txt_file_distributor.index.set_levels(df_product_txt_file_distributor.index.levels[1].astype(str), level=1)
+    df_pebac_product_reference.index = df_pebac_product_reference.index.set_levels(df_pebac_product_reference.index.levels[0].astype(str), level=0)
+    df_pebac_product_reference.index = df_pebac_product_reference.index.set_levels(df_pebac_product_reference.index.levels[1].astype(str), level=1)
 
     list_of_distributors =  df_entrepidus['Diageo_dist_auxiliar_column'].unique()
 
@@ -311,15 +267,14 @@ def calculating_quantity(df_entrepidus, df_product_txt_file_distributor):
             single_product = str(single_product)
 
             try:
-                multiplicative_factor = df_product_txt_file_distributor.loc[( single_distributor , single_product ), 'Bottles por Physical Case']
+                multiplicative_factor = df_pebac_product_reference.loc[( single_distributor , single_product ), 'Scale'].values
+                multiplicative_factor = multiplicative_factor[0]
             except:
-                logger.logger.info('multiplicative_factor not found in PRODUCT.txt for Distributor - {} Product - {}'.format(single_distributor, single_product))
+                logger.logger.info('multiplicative_factor not found in df_pebac_product_reference for Distributor - {} Product - {}'.format(single_distributor, single_product))
                 multiplicative_factor = 1
 
             try:
-                filt_key_dist_prod = (df_entrepidus['Diageo_dist_auxiliar_column'] == str(single_distributor) ) & (df_entrepidus['Chain SKU Code'] == str(single_product))
-                #filt_key_dist_prod = np.where((df_entrepidus['Diageo_dist_auxiliar_column'] == str(single_distributor) ) & (df_entrepidus['Chain SKU Code'] == str(single_product) & (df_entrepidus['Aux_unit_of_measure'] != 'btl')))
-                #Above is the condition that should be. To do - Investigate why multiple condition not working in Pandas. 
+                filt_key_dist_prod = (df_entrepidus['Diageo_dist_auxiliar_column'] == str(single_distributor) ) & (df_entrepidus['Chain SKU Code'] == str(single_product)) 
                 df_entrepidus.loc[filt_key_dist_prod, 'Unit Sold'] = df_entrepidus.loc[filt_key_dist_prod, 'Unit Sold'].multiply(multiplicative_factor)
             except:
                 logger.logger.error(' Error multiplication - Bottles por Physical Case - dist/product {}/{}'.format(single_distributor, single_product))
@@ -329,7 +284,7 @@ def calculating_quantity(df_entrepidus, df_product_txt_file_distributor):
     except:
         logger.logger.error('Not possible rounding df_entrepidus[Unit Sold]')
 
-    df_product_txt_file_distributor.reset_index(inplace=True)
+    df_pebac_product_reference.reset_index(inplace=True)
     df_entrepidus.reset_index(inplace=True)
 
     return df_entrepidus
@@ -439,20 +394,6 @@ def get_previous_and_current_month_period():
 
     return [current_month, previous_month]
 
-
-# Creating Pivot table of current and previous month -------
-def creating_pivot_table(df_entrepidus, previous_and_current_month_period):
-
-    current_month = previous_and_current_month_period[0]
-    previous_month = previous_and_current_month_period[1]
-
-    entrepidus_filtered_period = ((df_entrepidus['Date'].str[:6] == current_month) | (df_entrepidus['Date'].str[:6] == previous_month))
-    df_entrepidus = df_entrepidus.loc[entrepidus_filtered_period]
-
-    df_pivot_table = df_entrepidus.groupby(['Diageo_dist_auxiliar_column', 'Date'])['Unit Sold'].sum()
-
-    return df_pivot_table
-
 #Final formatting entrepidus
 def entrepidus_formatting(df_entrepidus):
 
@@ -488,13 +429,12 @@ def verifying_values_with_without_tax(df_entrepidus):
     return df_entrepidus
 
 # Creating Excel flie -------
-def creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores, root_path):
+def creating_excel_file(df_entrepidus, df_new_stores, root_path):
 
     excel_file_path = root_path + '/entrepidus_automated.xlsx'
 
     writer = pd.ExcelWriter(excel_file_path, engine='xlsxwriter')
     df_entrepidus[df_entrepidus.columns].to_excel(writer, columns=df_entrepidus.columns ,merge_cells=False, index=False, sheet_name='entrepidus')
-    df_pivot_table.to_excel(writer, merge_cells=False, sheet_name='pivot_table')
     df_new_stores.to_excel(writer, merge_cells=False, sheet_name='new_stores', index=False)
     writer.save()
 
@@ -502,19 +442,11 @@ def main():
 
     try:
         system_paths_dataframes_and_root_path = getting_system_paths()
-        system_paths = system_paths_dataframes_and_root_path[:5]
-        root_path = system_paths_dataframes_and_root_path[5]
+        system_paths = system_paths_dataframes_and_root_path[:4]
+        root_path = system_paths_dataframes_and_root_path[4]
     except:
         logger.logger.error('Not possible  getting_system_paths')
         print('Not possible getting_system_paths')
-        os.system('pause')
-        sys.exit()
-    
-    try:
-        chosen_option_multiply_quantity_by_product = get_menu_options()
-    except:
-        logger.logger.error('Not possible get_menu_options')
-        print('Not possible getting the option - Quantity will not be multiplied by product.txt')
         os.system('pause')
         sys.exit()
 
@@ -524,8 +456,7 @@ def main():
         df_sales = dataframes[0]
         df_pebac_product_reference = dataframes[1]
         df_product_master = dataframes[2]
-        df_product_txt_file_distributor = dataframes[3]
-        df_customer_catalog = dataframes[4]
+        df_customer_catalog = dataframes[3]
     except:
         logger.logger.error('Not possible loading DataFrames')
         print('Not possible loading DataFrames')
@@ -542,11 +473,11 @@ def main():
         sys.exit()
 
     try:
-        print('Cleaning product.txt file...')
-        df_product_txt_file_distributor = sanitizing_product_file(df_product_txt_file_distributor)
+        print('Cleaning df_pebac_product_reference...')
+        df_pebac_product_reference = sanitizing_df_pebac_product_reference(df_pebac_product_reference)
     except:
-        logger.logger.error('Not possible sanitizing_product_file function')
-        print('Not possible execute sanitizing_product_file function')
+        logger.logger.error('Not possible sanitizing_df_pebac_product_reference function')
+        print('Not possible execute sanitizing_df_pebac_product_reference function')
         os.system('pause')
         sys.exit()
 
@@ -596,16 +527,14 @@ def main():
         os.system('pause')
         sys.exit()
 
-
-    if (chosen_option_multiply_quantity_by_product == True):
-        try:
-            print('Calculating quantity...')
-            df_entrepidus = calculating_quantity(df_entrepidus, df_product_txt_file_distributor)
-        except:
-            logger.logger.error('Not possible executing function calculating_quantity')
-            print('Not possible calculating products quantities using product.txt file')
-            os.system('pause')
-            sys.exit()
+    try:
+        print('Calculating quantity...')
+        df_entrepidus = calculating_quantity(df_entrepidus, df_pebac_product_reference)
+    except:
+        logger.logger.error('Not possible executing function calculating_quantity')
+        print('Not possible calculating products quantities using pebac_product_reference file')
+        os.system('pause')
+        sys.exit()
 
     try:
         print('Getting store names...')
@@ -633,13 +562,6 @@ def main():
         print('Not possible creating_new_stores_dataframe')
 
     try:
-        print('Creating Pivo table...')
-        df_pivot_table = creating_pivot_table(df_entrepidus, previous_and_current_month_period)
-    except:
-        logger.logger.error('Not possible executing function creating_pivot_table')
-        print('Not possible creating Pivot Table')
-    
-    try:
         print('Checking tax values columns')
         df_entrepidus = verifying_values_with_without_tax(df_entrepidus)
     except:
@@ -657,7 +579,7 @@ def main():
 
     try:  
         print('Creating excel file...')
-        creating_excel_file(df_entrepidus, df_pivot_table, df_new_stores, root_path)
+        creating_excel_file(df_entrepidus, df_new_stores, root_path)
     except:
         logger.logger.error('Not possible executing function creating_excel_file')
         print('Not possible executing function creating_excel_file')
