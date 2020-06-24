@@ -46,7 +46,9 @@ def loading_dataframes(system_paths):
     #Loading Data Frame of Sales File
     try:
         try:
-            df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns, sep=';', low_memory=False, dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str }).fillna('')
+            df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns,sep=';', low_memory=False,
+            dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str,
+            'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }).fillna('')
         except pd.errors.ParserError as err:
             logger.logger.error('{}'.format(err))
             sys.exit(err)
@@ -118,12 +120,23 @@ def loading_dataframes(system_paths):
 
 def sanitizing_sales_file(df_sales):
     
+    #Removing negative sign from the end of the values (Some samples were found)
     values_that_end_with_negative_sign_quantity = (df_sales['Quantity'].str[-1] == '-')
     df_sales.loc[values_that_end_with_negative_sign_quantity, 'Quantity'] = '-' + df_sales.loc[values_that_end_with_negative_sign_quantity, 'Quantity'].str[:-1]
     
+    values_that_end_with_negative_sign_total_with_tax = (df_sales['Total Amount WITH TAX'].str[-1] == '-')
+    df_sales.loc[values_that_end_with_negative_sign_total_with_tax, 'Total Amount WITH TAX'] = '-' + df_sales.loc[values_that_end_with_negative_sign_total_with_tax, 'Total Amount WITH TAX'].str[:-1]
     
-    df_sales['Product Code'] = df_sales['Product Code'].str.lstrip('0')
+    values_that_end_with_negative_sign_total_without_tax = (df_sales['Total Amount WITHOUT TAX'].str[-1] == '-')
+    df_sales.loc[values_that_end_with_negative_sign_total_without_tax, 'Total Amount WITHOUT TAX'] = '-' + df_sales.loc[values_that_end_with_negative_sign_total_without_tax, 'Total Amount WITHOUT TAX'].str[:-1]
+    
+    #Turning it numeric below quantities
     df_sales['Quantity'] = pd.to_numeric(df_sales['Quantity']).fillna(0)
+    df_sales['Total Amount WITH TAX'] = pd.to_numeric(df_sales['Total Amount WITH TAX']).fillna(0)
+    df_sales['Total Amount WITHOUT TAX'] = pd.to_numeric(df_sales['Total Amount WITHOUT TAX']).fillna(0)
+    
+    #Removing spaces and leading zeros from below columns
+    df_sales['Product Code'] = df_sales['Product Code'].str.lstrip('0')
     df_sales['Store code'] = df_sales['Store code'].str.strip()
 
     return df_sales
@@ -463,7 +476,7 @@ def main():
         print('Not possible loading DataFrames')
         os.system('pause')
         sys.exit()
-    
+
     try:
         print('Cleaning sales.txt file...')
         df_sales = sanitizing_sales_file(df_sales)
