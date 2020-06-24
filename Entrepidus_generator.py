@@ -121,12 +121,7 @@ def sanitizing_sales_file(df_sales):
     values_that_end_with_negative_sign_quantity = (df_sales['Quantity'].str[-1] == '-')
     df_sales.loc[values_that_end_with_negative_sign_quantity, 'Quantity'] = '-' + df_sales.loc[values_that_end_with_negative_sign_quantity, 'Quantity'].str[:-1]
     
-    values_that_end_with_negative_sign_total_without_tax = (df_sales['Total Amount WITHOUT TAX'].str[-1] == '-')
-    df_sales.loc[values_that_end_with_negative_sign_total_without_tax, 'Total Amount WITHOUT TAX'] = '-' + df_sales.loc[values_that_end_with_negative_sign_total_without_tax, 'Total Amount WITHOUT TAX'].str[:-1]
-
-    values_that_end_with_negative_sign_total_with_tax = (df_sales['Total Amount WITH TAX'].str[-1] == '-')
-    df_sales.loc[values_that_end_with_negative_sign_total_with_tax, 'Total Amount WITH TAX'] = '-' + df_sales.loc[values_that_end_with_negative_sign_total_with_tax, 'Total Amount WITH TAX'].str[:-1]
-
+    
     df_sales['Product Code'] = df_sales['Product Code'].str.lstrip('0')
     df_sales['Quantity'] = pd.to_numeric(df_sales['Quantity']).fillna(0)
     df_sales['Store code'] = df_sales['Store code'].str.strip()
