@@ -445,7 +445,9 @@ def verifying_values_with_without_tax(df_entrepidus):
 # Creating Excel flie -------
 def creating_excel_file(df_entrepidus, df_new_stores, root_path):
 
-    excel_file_path = root_path + '/entrepidus_automated.xlsx'
+    today_date = datetime.today()
+    today_date = today_date.strftime("%Y%m%d")    
+    excel_file_path = root_path + '/EntrepidusDistributors_' + today_date + '_automated.xlsx'
 
     writer = pd.ExcelWriter(excel_file_path, engine='xlsxwriter')
     df_entrepidus[df_entrepidus.columns].to_excel(writer, columns=df_entrepidus.columns ,merge_cells=False, index=False, sheet_name='entrepidus')
