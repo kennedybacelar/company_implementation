@@ -140,6 +140,9 @@ def sanitizing_sales_file(df_sales):
     df_sales['Store code'] = df_sales['Store code'].str.lstrip('0')
     df_sales['Store code'] = df_sales['Store code'].str.strip()
 
+    #Cutting characters after the 12th position from Store Code column
+    df_sales['Store code'] = df_sales['Store code'].str[:12]
+
     return df_sales
 
 def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
