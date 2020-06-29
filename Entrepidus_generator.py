@@ -137,6 +137,7 @@ def sanitizing_sales_file(df_sales):
     
     #Removing spaces and leading zeros from below columns
     df_sales['Product Code'] = df_sales['Product Code'].str.lstrip('0')
+    df_sales['Store code'] = df_sales['Store code'].str.lstrip('0')
     df_sales['Store code'] = df_sales['Store code'].str.strip()
 
     return df_sales
