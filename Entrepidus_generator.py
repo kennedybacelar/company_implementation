@@ -26,8 +26,11 @@ def getting_system_paths():
     product_master_path = 'Catalogs/Product_catalog/product_master.xlsx'
     customer_catalog_file_path = 'Catalogs/Customer_catalog/' + country + '_customer_catalog.xlsx'
 
+    entrepidus_stock_directory_path = '/'.join(root_path.split('/')[:-1])
+    entrepidus_stock_file_path = entrepidus_stock_directory_path + '/Entrepidus_STOCK.csv'
+
     system_paths = [sales_file_path, pebac_master_data_product_file_path, 
-            product_master_path, customer_catalog_file_path, root_path]
+            product_master_path, customer_catalog_file_path, root_path, entrepidus_stock_file_path]
 
     return system_paths
 
@@ -447,6 +450,49 @@ def verifying_values_with_without_tax(df_entrepidus):
 
     return df_entrepidus
 
+def loading_stock_file(entrepidus_stock_file_path):
+
+    found_entrepidus_stock = True
+
+    try:
+        df_entrepidus_stock = pd.read_csv( entrepidus_stock_file_path, index_col=False, sep=';', low_memory=False,
+            dtype=str, encoding='latin-1' ).fillna('')
+    except:
+        logger.logger.info('No stock file found on {}'.format(entrepidus_stock_file_path))
+        print('Entrepidus_stock not found for this distributor!')
+        found_entrepidus_stock = False
+
+    if (found_entrepidus_stock == True):
+        return [found_entrepidus_stock, df_entrepidus_stock]
+    else:
+        return [ found_entrepidus_stock ]
+
+
+def formatting_stock_file(df_entrepidus_stock):
+
+    df_entrepidus_stock = df_entrepidus_stock.assign(Diageo_dist_auxiliar_column = '-')
+    #df_entrepidus_stock.reset_index(inplace=True)
+
+    entrepidus_stock_columns = ['Diageo_dist_auxiliar_column', 'Date', 'Store Number', 'Store Name', 'Chain', 'Supervisor', 'Region',
+        'Commune', 'Merchandiser', 'Chain SKU Code', 'Diageo SKU Code',	'Desc Producto & Cód.',
+        'Category', 'Sub Category', 'Brand', 'Brand Variant', 'Unit Size', 'Unit Sold', 
+        'Sales Value wotax', 'Sales Value wtax', 'Currency Code', 'Distributor', 'Country', 
+        'Inventory Unit']
+
+    df_entrepidus_stock = df_entrepidus_stock.reindex(columns=entrepidus_stock_columns)
+
+    return df_entrepidus_stock
+
+
+def appending_entrepidus_stock_to_entrepidus_sales(df_entrepidus_stock, df_entrepidus):
+
+    try:
+        df_entrepidus = df_entrepidus.append(df_entrepidus_stock, ignore_index=True)
+    except:
+        logger.logger.error('Not posible appending Stock to Entrepidus')
+    
+    return df_entrepidus
+
 # Creating Excel flie -------
 def creating_excel_file(df_entrepidus, df_new_stores, root_path):
 
@@ -465,6 +511,7 @@ def main():
         system_paths_dataframes_and_root_path = getting_system_paths()
         system_paths = system_paths_dataframes_and_root_path[:4]
         root_path = system_paths_dataframes_and_root_path[4]
+        entrepidus_stock_file_path = system_paths_dataframes_and_root_path[5]
     except:
         logger.logger.error('Not possible  getting_system_paths')
         print('Not possible getting_system_paths')
@@ -576,14 +623,14 @@ def main():
         print('Not possible creating_new_stores_dataframe')
 
     try:
-        print('Registering new stores')
+        print('Registering new stores...')
         df_new_stores = registering_new_stores(new_stores, df_new_stores)
     except:
         logger.logger.error('Not possible executing function registering_new_stores')
         print('Not possible creating_new_stores_dataframe')
 
     try:
-        print('Checking tax values columns')
+        print('Checking tax values columns...')
         df_entrepidus = verifying_values_with_without_tax(df_entrepidus)
     except:
         logger.logger.error('Not possible verifying_values_with_without_tax(df_entrepidus)')
@@ -597,6 +644,37 @@ def main():
         print('Not possible formatting Entrepidus')
         os.system('pause')
         sys.exit()
+    
+    try:
+        print('Searching stock file...')
+        result_finding_stock_file = loading_stock_file(entrepidus_stock_file_path)
+    except:
+        logger.logger.info('Not possible executing loading_stock_file')
+    finally:
+        found_stock_file = result_finding_stock_file[0]
+        if ( found_stock_file == True ):
+            try:
+                df_entrepidus_stock = result_finding_stock_file[1]
+            except:
+                logger.logger.info('Not possible creating DataFrame df_entrepidus_stock')
+                print('Not possible creating DataFrame df_entrepidus_stock')
+    
+    #Just getting into that function if df_stock is not false
+    if found_stock_file:
+        try:
+            print('Checking stock file...')
+            df_entrepidus_stock = formatting_stock_file(df_entrepidus_stock)
+        except:
+            logger.logger.info('Not possible executing formatting_stock_file')
+    
+    #Just getting into that function if df_stock is not false
+    if found_stock_file:
+        try:
+            print('Appending stock file into entrepidus sales...')
+            df_entrepidus = appending_entrepidus_stock_to_entrepidus_sales(df_entrepidus_stock, df_entrepidus)
+        except:
+            logger.logger.info('Not possible executing formatting_stock_file')
+            print('Not posible appending Stock to Entrepidus')
 
     try:  
         print('Creating excel file...')
