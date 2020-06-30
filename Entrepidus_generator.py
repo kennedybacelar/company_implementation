@@ -109,7 +109,6 @@ def loading_dataframes(system_paths):
     except:
         logger.logger.info('Not possible dropping Columns of file - {}'.format(sales_file_path))
 
-
     #Dropping unecessary columns of Product_master field
     try:
         df_product_master.drop(columns=['PRDHA L7 Packaging', 'Packaging', 'PRDHA L6 Volume',
@@ -471,7 +470,12 @@ def loading_stock_file(entrepidus_stock_file_path):
 def formatting_stock_file(df_entrepidus_stock):
 
     df_entrepidus_stock = df_entrepidus_stock.assign(Diageo_dist_auxiliar_column = '-')
-    #df_entrepidus_stock.reset_index(inplace=True)
+    
+    try:
+        df_entrepidus_stock['Inventory Unit'] = pd.to_numeric(df_entrepidus_stock['Inventory Unit']).fillna(0)
+    except:
+        print('Not possible changing to Numeric column Inventory Unit of df_entrepidus_stock')
+        logger.logger.error('Not possible changing to Numeric column Inventory Unit of df_entrepidus_stock')
 
     entrepidus_stock_columns = ['Diageo_dist_auxiliar_column', 'Date', 'Store Number', 'Store Name', 'Chain', 'Supervisor', 'Region',
         'Commune', 'Merchandiser', 'Chain SKU Code', 'Diageo SKU Code',	'Desc Producto & Cód.',
