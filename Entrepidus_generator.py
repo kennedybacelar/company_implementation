@@ -240,6 +240,7 @@ def filling_product_details(df_entrepidus, df_product_master):
 
     df_product_master.set_index(['Material'], inplace=True)
     df_product_master.index = df_product_master.index.map(str) #Changing indexes into string
+    df_product_master = df_product_master[~df_product_master.index.duplicated(keep='last')]
 
     list_of_diageo_sku_unique = df_entrepidus['Diageo SKU Code'].unique()
 
@@ -603,6 +604,7 @@ def main():
     except:
         logger.logger.error('Not possible executing function creating_excel_file')
         print('Not possible executing function creating_excel_file')
+        print('** Please make sure that a previous generated Entrepidus in the same folder is not open **\n')
         os.system('pause')
         sys.exit()
 
