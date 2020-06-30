@@ -22,9 +22,11 @@ def getting_system_paths():
     sales_file_path = str(root_path) + '/sales.txt'
     sales_file_path = str(sales_file_path)
 
-    pebac_master_data_product_file_path = 'Catalogs/Product_catalog/pebac_ref_prod.xlsx'
-    product_master_path = 'Catalogs/Product_catalog/product_master.xlsx'
-    customer_catalog_file_path = 'Catalogs/Customer_catalog/' + country + '_customer_catalog.xlsx'
+    catalogs_root_path = '../../../Catalogs/Traditional_STR/'
+
+    pebac_master_data_product_file_path = catalogs_root_path + 'Product_catalog/pebac_ref_prod.xlsx'
+    product_master_path = catalogs_root_path + 'Product_catalog/product_master.xlsx'
+    customer_catalog_file_path = catalogs_root_path + 'Customer_catalog/' + country + '_customer_catalog.xlsx'
 
     entrepidus_stock_directory_path = '/'.join(root_path.split('/')[:-1])
     entrepidus_stock_file_path = entrepidus_stock_directory_path + '/Entrepidus_STOCK.csv'
