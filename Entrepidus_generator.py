@@ -255,8 +255,8 @@ def filling_product_details(df_entrepidus, df_product_master):
             df_entrepidus['Brand'].loc[specific_diageo_sku] = df_product_master['Brand'].loc[specific_diageo_sku]
             df_entrepidus['Brand Variant'].loc[specific_diageo_sku] = df_product_master['Brand Variant'].loc[specific_diageo_sku]
             df_entrepidus['Unit Size'].loc[specific_diageo_sku] = df_product_master['Unit Size'].loc[specific_diageo_sku]
-        except KeyError as err:
-            logger.logger.error('{}'.format(err))
+        except:
+            logger.logger.error('{} - Not possible filling this product details'.format(specific_diageo_sku))
         
     df_entrepidus.reset_index(inplace=True)
     return df_entrepidus
