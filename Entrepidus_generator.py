@@ -472,6 +472,8 @@ def loading_stock_file(entrepidus_stock_file_path):
 def formatting_stock_file(df_entrepidus_stock):
 
     df_entrepidus_stock = df_entrepidus_stock.assign(Diageo_dist_auxiliar_column = '-')
+
+    df_entrepidus_stock.columns = [column.encode('latin-1').decode('ascii', 'ignore') for column in df_entrepidus_stock.columns]
     
     try:
         df_entrepidus_stock['Inventory Unit'] = pd.to_numeric(df_entrepidus_stock['Inventory Unit']).fillna(0)
