@@ -151,6 +151,7 @@ def sanitizing_sales_file(df_sales):
 
 def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
 
+    df_pebac_product_reference.columns = [column.encode('latin-1').decode('ascii', 'ignore') for column in df_pebac_product_reference.columns]
     df_pebac_product_reference['Scale'] = pd.to_numeric(df_pebac_product_reference['Scale']).fillna(1)
 
     return df_pebac_product_reference
@@ -502,16 +503,24 @@ def appending_entrepidus_stock_to_entrepidus_sales(df_entrepidus_stock, df_entre
     return df_entrepidus
 
 # Creating Excel flie -------
-def creating_excel_file(df_entrepidus, df_new_stores, root_path):
+def creating_csv_files(df_entrepidus, df_new_stores, root_path):
 
     today_date = datetime.today()
     today_date = today_date.strftime("%Y%m%d")    
-    excel_file_path = root_path + '/EntrepidusDistributors_' + today_date + '_automated.xlsx'
+    csv_entrepidus_file_path = root_path + '/EntrepidusDistributors_' + today_date + '_automated.csv'
+    csv_customer_file_path = root_path + '/Customers Catalogue_automated.csv'
 
-    writer = pd.ExcelWriter(excel_file_path, engine='xlsxwriter')
-    df_entrepidus[df_entrepidus.columns].to_excel(writer, columns=df_entrepidus.columns ,merge_cells=False, index=False, sheet_name='entrepidus')
-    df_new_stores.to_excel(writer, merge_cells=False, sheet_name='new_stores', index=False)
-    writer.save()
+    try:
+        df_entrepidus[df_entrepidus.columns].to_csv(csv_entrepidus_file_path, sep=';', columns=df_entrepidus.columns, index=False)
+    except:
+        print('Not possible creating EntrepidusDistributors CSV File')
+        logger.logger.error('Not possible creating EntrepidusDistributors CSV File')
+    
+    try:
+        df_new_stores.to_csv(csv_customer_file_path, sep=';', index=False)
+    except:
+        print('Not possible creating Customer_catalogue CSV File')
+        logger.logger.error('Not possible creating Customer_catalogue CSV File')
 
 def main():
 
@@ -685,8 +694,8 @@ def main():
             print('Not posible appending Stock to Entrepidus')
 
     try:  
-        print('Creating excel file...')
-        creating_excel_file(df_entrepidus, df_new_stores, root_path)
+        print('Creating CSV files...')
+        creating_csv_files(df_entrepidus, df_new_stores, root_path)
     except:
         logger.logger.error('Not possible executing function creating_excel_file')
         print('Not possible executing function creating_excel_file')
