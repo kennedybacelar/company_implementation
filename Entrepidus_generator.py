@@ -27,12 +27,13 @@ def getting_system_paths():
     pebac_master_data_product_file_path = catalogs_root_path + 'Product_catalog/pebac_ref_prod.xlsx'
     product_master_path = catalogs_root_path + 'Product_catalog/product_master.xlsx'
     customer_catalog_file_path = catalogs_root_path + 'Customer_catalog/' + country + '_customer_catalog.xlsx'
+    dist_names_file_path = catalogs_root_path + 'dist_names.xlsx'
 
     entrepidus_stock_directory_path = '/'.join(root_path.split('/')[:-1])
     entrepidus_stock_file_path = entrepidus_stock_directory_path + '/Entrepidus_STOCK.csv'
 
     system_paths = [sales_file_path, pebac_master_data_product_file_path, 
-            product_master_path, customer_catalog_file_path, root_path, entrepidus_stock_file_path]
+            product_master_path, customer_catalog_file_path, dist_names_file_path, root_path, entrepidus_stock_file_path]
 
     return system_paths
 
@@ -42,6 +43,7 @@ def loading_dataframes(system_paths):
     pebac_master_data_product_file_path = system_paths[1]
     product_master_path = system_paths[2]
     customer_catalog_file_path = system_paths[3]
+    dist_names_file_path = system_paths[4]
 
     df_sales_columns = ['Country', 'Diageo Customer ID', 'Diageo Customer Name', 
     'Invoice number', 'Type of Invoice',	'Invoice Date', 'Store code', 'Product Code', 
@@ -103,6 +105,13 @@ def loading_dataframes(system_paths):
     except:
         logger.logger.info('Not possible opening the file / setting index{}'.format(customer_catalog_file_path))
         sys.exit('Not possible opening the file - {}'.format(customer_catalog_file_path))
+    
+    #Loading Data Frame of Distributors correct name and country
+    try:
+        df_dist_names = pd.read_excel(dist_names_file_path, dtype=str ).fillna('')
+    except:
+        print('Not possible opening file - {}'.format(dist_names_file_path))
+        logger.logger.error('Not possible opening file - {}'.format(dist_names_file_path))
 
 
     #Dropping unecessary columns of Dataframes to keep processing light
@@ -119,7 +128,7 @@ def loading_dataframes(system_paths):
     except:
         logger.logger.info('Not possible dropping Columns of file - {}'.format(product_master_path))
 
-    return [df_sales, df_pebac_product_reference, df_product_master, df_customer_catalog]
+    return [df_sales, df_pebac_product_reference, df_product_master, df_customer_catalog, df_dist_names]
 
 
 def sanitizing_sales_file(df_sales):
@@ -208,6 +217,35 @@ def setting_df_entrepidus_and_sales(df_entrepidus, df_sales):
     
     return [df_entrepidus, df_sales]
 
+def assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names):
+
+    list_of_distributors = df_entrepidus['Diageo_dist_auxiliar_column'].unique()
+    df_entrepidus.set_index(['Diageo_dist_auxiliar_column'], inplace=True)
+    df_entrepidus.index = df_entrepidus.index.map(str)
+
+    df_dist_names.set_index(['Distributor_id'], inplace=True)
+    df_dist_names.index = df_dist_names.index.map(str)
+
+    for single_distributor in list_of_distributors:
+        single_distributor = str(single_distributor)
+
+        distributor_correct_name = df_dist_names.loc[single_distributor, 'Distributor_name']
+        distributor_correct_country = df_dist_names.loc[single_distributor, 'Distributor_country']
+
+        try:
+            df_entrepidus.loc[single_distributor, 'Distributor'] = distributor_correct_name
+        except:
+            print('Not possible assigning distributor name from Dist_names_file - {}'.format(single_distributor))
+            logger.logger.error('Not possible assigning distributor name from Dist_names_file - {}'.format(single_distributor))
+        
+        try:
+            df_entrepidus.loc[single_distributor, 'Country'] = distributor_correct_country
+        except:
+            print('Not possible assigning distributor country from Dist_names_file - {}'.format(single_distributor))
+            logger.logger.error('Not possible assigning distributor country from Dist_names_file - {}'.format(single_distributor))
+        
+    df_entrepidus.reset_index(inplace=True)
+    return df_entrepidus
 
 def searching_diageo_sku(df_sales, df_product_master, df_entrepidus):
 
@@ -511,13 +549,14 @@ def creating_csv_files(df_entrepidus, df_new_stores, root_path):
     csv_customer_file_path = root_path + '/Customers Catalogue_automated.csv'
 
     try:
-        df_entrepidus[df_entrepidus.columns].to_csv(csv_entrepidus_file_path, sep=';', columns=df_entrepidus.columns, index=False)
+        df_entrepidus[df_entrepidus.columns].to_csv(csv_entrepidus_file_path, encoding='latin-1', sep=';',
+        columns=df_entrepidus.columns, index=False)
     except:
         print('Not possible creating EntrepidusDistributors CSV File')
         logger.logger.error('Not possible creating EntrepidusDistributors CSV File')
     
     try:
-        df_new_stores.to_csv(csv_customer_file_path, sep=';', index=False)
+        df_new_stores.to_csv(csv_customer_file_path, sep=';', encoding='latin-1', index=False)
     except:
         print('Not possible creating Customer_catalogue CSV File')
         logger.logger.error('Not possible creating Customer_catalogue CSV File')
@@ -526,9 +565,9 @@ def main():
 
     try:
         system_paths_dataframes_and_root_path = getting_system_paths()
-        system_paths = system_paths_dataframes_and_root_path[:4]
-        root_path = system_paths_dataframes_and_root_path[4]
-        entrepidus_stock_file_path = system_paths_dataframes_and_root_path[5]
+        system_paths = system_paths_dataframes_and_root_path[:5]
+        root_path = system_paths_dataframes_and_root_path[5]
+        entrepidus_stock_file_path = system_paths_dataframes_and_root_path[6]
     except:
         logger.logger.error('Not possible  getting_system_paths')
         print('Not possible getting_system_paths')
@@ -585,6 +624,13 @@ def main():
         print('Not possible executing function setting_df_entrepidus_and_sales')
         os.system('pause')
         sys.exit()
+
+    try:
+        print('assigning_dist_names_and_country_to_entrepidus')
+        df_entrepidus = assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names)
+    except:
+        logger.logger.error('Not possible executing function setting_df_entrepidus_and_sales')
+        print('Not possible assigning dist_names_and_country to entrepidus')
 
     try:
         print('Filtering current and previous month...')
