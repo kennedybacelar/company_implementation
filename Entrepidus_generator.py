@@ -555,14 +555,14 @@ def creating_csv_files(df_entrepidus, df_new_stores, root_path):
     csv_customer_file_path = root_path + '/Customers Catalogue_automated.csv'
 
     try:
-        df_entrepidus[df_entrepidus.columns].to_csv(csv_entrepidus_file_path, encoding='utf-8-sig', sep=';',
+        df_entrepidus[df_entrepidus.columns].to_csv(csv_entrepidus_file_path, encoding='utf_16_le', sep=';',
         columns=df_entrepidus.columns, index=False)
     except:
         print('Not possible creating EntrepidusDistributors CSV File')
         logger.logger.error('Not possible creating EntrepidusDistributors CSV File')
     
     try:
-        df_new_stores.to_csv(csv_customer_file_path, sep=';', encoding='utf-8-sig', index=False)
+        df_new_stores.to_csv(csv_customer_file_path, sep=';', encoding='utf_16_le', index=False)
     except:
         print('Not possible creating Customer_catalogue CSV File')
         logger.logger.error('Not possible creating Customer_catalogue CSV File')
