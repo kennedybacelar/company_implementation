@@ -10,21 +10,34 @@ import warnings
 
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-def getting_system_paths():
+def getting_user_input():
+
+    STR_indicator = False
 
     root_path = input('Please inform root path: \n')
     root_path = root_path.replace('\\', '/')
-    root_path = str(root_path)
 
     country = input('Please inform the country of the distrbutor: \n')
     country = country.lower()
 
+    STR_country_list = ['paraguay', 'uruguay']
+
+    if (country in STR_country_list):
+        STR_indicator = True
+
+    return [root_path, country, STR_indicator]
+
+def getting_system_paths(root_path, country, STR_indicator):
+
     sales_file_path = str(root_path) + '/sales.txt'
-    sales_file_path = str(sales_file_path)
 
     catalogs_root_path = '../../../Catalogs/Traditional_STR/'
+    product_by_distributor_file_name = 'pebac_ref_prod.xlsx'
 
-    pebac_master_data_product_file_path = catalogs_root_path + 'Product_catalog/pebac_ref_prod.xlsx'
+    if STR_indicator:
+        product_by_distributor_file_name = 'str_ref_prod.xlsx'
+
+    pebac_master_data_product_file_path = catalogs_root_path + 'Product_catalog/' + product_by_distributor_file_name
     product_master_path = catalogs_root_path + 'Product_catalog/product_master.xlsx'
     customer_catalog_file_path = catalogs_root_path + 'Customer_catalog/' + country + '_customer_catalog.xlsx'
     dist_names_file_path = catalogs_root_path + 'dist_names.xlsx'
@@ -52,59 +65,38 @@ def loading_dataframes(system_paths):
 
     #Loading Data Frame of Sales File
     try:
-        try:
-            df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns,sep=';', low_memory=False,
-            dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str,
-            'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }).fillna('')
-        except pd.errors.ParserError as err:
-            logger.logger.error('{}'.format(err))
-            sys.exit(err)
+        df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns,sep=';', low_memory=False,
+        dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str,
+        'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }, header=0).fillna('')
     except:
         logger.logger.error('Not possible opening the file{}'.format(sales_file_path))
         print('Not possible opening the file - {}'.format(sales_file_path))
+        sys.exit()
 
     #Loading Data Frame of (De->Para) / Product Customer -> Diageo SKU
     try:
-        try:
-            df_pebac_product_reference = pd.read_excel(pebac_master_data_product_file_path, converters = { 'Dist_Code': str, 'Product_store_id': str} ).fillna('')
-            df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True)        
-        except ValueError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
-        except IOError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
+        df_pebac_product_reference = pd.read_excel(pebac_master_data_product_file_path, converters = { 'Dist_Code': str, 'Product_store_id': str} ).fillna('')
+        df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True)        
     except:
         logger.logger.info('Not possible opening the file / setting index{}'.format(pebac_master_data_product_file_path))
-        sys.exit('Not possible opening the file - {}'.format(pebac_master_data_product_file_path))
+        print('Not possible opening the file - {}'.format(pebac_master_data_product_file_path))
+        sys.exit()
 
     #Loading Data Frame of Product Master Data
     try:
-        try:
-            df_product_master = pd.read_excel(product_master_path, dtype={ 'Material': str }).fillna('')      
-        except ValueError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
-        except IOError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
+        df_product_master = pd.read_excel(product_master_path, dtype={ 'Material': str }).fillna('')      
     except:
         logger.logger.info('Not possible opening the file / setting index{}'.format(product_master_path))
-        sys.exit('Not possible opening the file - {}'.format(product_master_path))
+        print('Not possible opening the file - {}'.format(product_master_path))
+        sys.exit()
 
     #Loading Data Frame of Customer Catalog Per Country
     try:
-        try:
-            df_customer_catalog = pd.read_excel(customer_catalog_file_path, converters={ 'Distributor_id':str, 'Store_id':str } ).fillna('')       
-        except ValueError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
-        except IOError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
+        df_customer_catalog = pd.read_excel(customer_catalog_file_path, converters={ 'Distributor_id':str, 'Store_id':str } ).fillna('')       
     except:
         logger.logger.info('Not possible opening the file / setting index{}'.format(customer_catalog_file_path))
-        sys.exit('Not possible opening the file - {}'.format(customer_catalog_file_path))
+        print('Not possible opening the file - {}'.format(customer_catalog_file_path))
+        sys.exit()
     
     #Loading Data Frame of Distributors correct name and country
     try:
@@ -112,6 +104,7 @@ def loading_dataframes(system_paths):
     except:
         print('Not possible opening file - {}'.format(dist_names_file_path))
         logger.logger.error('Not possible opening file - {}'.format(dist_names_file_path))
+        sys.exit()
 
 
     #Dropping unecessary columns of Dataframes to keep processing light
@@ -240,7 +233,7 @@ def assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names)
         try:
             df_entrepidus.loc[single_distributor, 'Distributor'] = distributor_correct_name
         except:
-            print('Not possible assigning distributor name from Dist_names_file - {}'.format(single_distributor))
+            print('Error- Distributor name in dist_names file: {}'.format(single_distributor))
             logger.logger.error('Not possible assigning distributor name from Dist_names_file - {}'.format(single_distributor))
         
         try:
@@ -570,7 +563,17 @@ def creating_csv_files(df_entrepidus, df_new_stores, root_path):
 def main():
 
     try:
-        system_paths_dataframes_and_root_path = getting_system_paths()
+        user_inputs = getting_user_input()
+        root_path = user_inputs[0]
+        country = user_inputs[1]
+        STR_indicator = user_inputs[2]
+    except:
+        print('Not possible getting user input')
+        os.system('pause')
+        sys.exit()
+
+    try:
+        system_paths_dataframes_and_root_path = getting_system_paths(root_path, country, STR_indicator)
         system_paths = system_paths_dataframes_and_root_path[:5]
         root_path = system_paths_dataframes_and_root_path[5]
         entrepidus_stock_file_path = system_paths_dataframes_and_root_path[6]
