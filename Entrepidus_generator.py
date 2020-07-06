@@ -494,8 +494,8 @@ def loading_stock_file(entrepidus_stock_file_path):
     found_entrepidus_stock = True
 
     try:
-        df_entrepidus_stock = pd.read_csv( entrepidus_stock_file_path, index_col=False, sep=';', low_memory=False,
-            dtype=str, encoding='latin-1' ).fillna('')
+        df_entrepidus_stock = pd.read_csv( entrepidus_stock_file_path, encoding='mbcs', index_col=False, sep=';', low_memory=False,
+            dtype=str ).fillna('')
     except:
         logger.logger.info('No stock file found on {}'.format(entrepidus_stock_file_path))
         print('Entrepidus_stock not found for this distributor!')
