@@ -153,7 +153,7 @@ def sanitizing_sales_file(df_sales):
 
 def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
 
-    df_pebac_product_reference.columns = [column.encode('latin-1').decode('ascii', 'ignore') for column in df_pebac_product_reference.columns]
+    df_pebac_product_reference.columns = [column.encode('mbcs').decode('mbcs', 'ignore') for column in df_pebac_product_reference.columns]
     df_pebac_product_reference['Scale'] = pd.to_numeric(df_pebac_product_reference['Scale']).fillna(1)
 
     return df_pebac_product_reference
@@ -511,7 +511,7 @@ def formatting_stock_file(df_entrepidus_stock):
 
     df_entrepidus_stock = df_entrepidus_stock.assign(Diageo_dist_auxiliar_column = '-')
 
-    df_entrepidus_stock.columns = [column.encode('latin-1').decode('ascii', 'ignore') for column in df_entrepidus_stock.columns]
+    df_entrepidus_stock.columns = [column.encode('mbcs').decode('mbcs', 'ignore') for column in df_entrepidus_stock.columns]
     
     try:
         df_entrepidus_stock['Inventory Unit'] = pd.to_numeric(df_entrepidus_stock['Inventory Unit']).fillna(0)
