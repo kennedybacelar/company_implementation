@@ -12,6 +12,8 @@ warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 def getting_user_input():
 
+    print('*** Save your store.txt file in UTF-8 format ***')
+
     STR_indicator = False
 
     root_path = input('Please inform root path: \n')
@@ -30,6 +32,7 @@ def getting_user_input():
 def getting_system_paths(root_path, country, STR_indicator):
 
     sales_file_path = str(root_path) + '/sales.txt'
+    store_txt_file_path = root_path + '/store.txt'
 
     catalogs_root_path = '../../../Catalogs/Traditional_STR/'
     product_by_distributor_file_name = 'pebac_ref_prod.xlsx'
@@ -41,12 +44,14 @@ def getting_system_paths(root_path, country, STR_indicator):
     product_master_path = catalogs_root_path + 'Product_catalog/product_master.xlsx'
     customer_catalog_file_path = catalogs_root_path + 'Customer_catalog/' + country + '_customer_catalog.xlsx'
     dist_names_file_path = catalogs_root_path + 'dist_names.xlsx'
+    customer_filling_reference_file_path = catalogs_root_path + 'Customer_catalog/z_customer_reference.xlsx'
 
     entrepidus_stock_directory_path = '/'.join(root_path.split('/')[:-1])
     entrepidus_stock_file_path = entrepidus_stock_directory_path + '/Entrepidus_STOCK.csv'
 
     system_paths = [sales_file_path, pebac_master_data_product_file_path, 
-            product_master_path, customer_catalog_file_path, dist_names_file_path, root_path, entrepidus_stock_file_path]
+            product_master_path, customer_catalog_file_path, dist_names_file_path, root_path,
+            entrepidus_stock_file_path, store_txt_file_path, customer_filling_reference_file_path]
 
     return system_paths
 
@@ -436,6 +441,143 @@ def registering_new_stores(new_stores, df_new_stores):
     return df_new_stores
 
 
+def loading_store_txt_file_and_customer_filling_reference(
+    store_txt_file_path, 
+    STR_indicator,
+    customer_filling_reference_file_path):
+
+    if STR_indicator:
+        store_header = 1
+    else:
+        store_header = None
+
+    df_store_txt_file_columns = [ 'Diageo Customer ID', 'Diageo Customer Name', 'Store Code',
+    'Store Name','City','Region', 'Sales Representative Code',
+    'Sales Representative Name', 'Local Segment 1','Local Segment 2', 'Local Segment 3', 'Local Segment 4']
+
+    try:
+        df_store_txt_flat_file = pd.read_csv(store_txt_file_path, encoding='utf-8',
+            names=df_store_txt_file_columns, sep=';', low_memory=False,
+            dtype=str, header=store_header).fillna('')
+    except:
+        logger.logger.error('Not possible loading df_store_txt_flat_file')
+        print('Not possible loading df_store_txt_flat_file')
+    
+    try:
+        df_z_customer_standard_filling_reference = pd.read_excel(customer_filling_reference_file_path, 
+        dtype=str).fillna('')
+    except:
+        logger.logger.error('Not possible loading customer_filling_reference_file_path')
+        print('Not possible loading customer_filling_reference_file_path')
+
+    return [df_store_txt_flat_file, df_z_customer_standard_filling_reference]
+
+
+def declaring_dictionaries():
+
+    dict_store_vs_customer_catalog_A = {
+        'Chain': 'Diageo Customer Name',
+        'Store Nbr': 'Store Code',
+        'Store Name': 'Store Name',
+        'City': 'City',
+        'State or Region': 'Region',
+        'Occasion Segment': 'Sales Representative Code',
+        'Occasion': 'Sales Representative Name',
+        'Store/Business Type': 'Sales Representative Name',
+        'Channel': 'Local Segment 1',
+        'Trade': 'Local Segment 2',
+        'Subchannel': 'Local Segment 3',
+        'Segment': 'Local Segment 4'
+    }
+
+    dict_store_vs_customer_catalog_B = {
+        'Chain': 'Diageo Customer Name',
+        'Store Nbr': 'Store Code',
+        'Store Name': 'Store Name',
+        'City': 'City',
+        'State or Region': 'Region',
+        'Occasion Segment': 'Sales Representative Code',
+        'Occasion': 'Sales Representative Name',
+        'Store/Business Type': 'Sales Representative Name',
+        'Channel': 'Local Segment 1',
+        'Trade': 'Local Segment 1',
+        'Subchannel': 'Local Segment 3',
+        'Segment': 'Local Segment 2'
+    }
+
+    return [dict_store_vs_customer_catalog_A, dict_store_vs_customer_catalog_B]
+
+
+def filling_new_stores_details(
+        df_new_stores,
+        df_store_txt_flat_file,
+        df_z_customer_standard_filling_reference,
+        dict_store_vs_customer_catalog_A,
+        dict_store_vs_customer_catalog_B
+    ):
+
+    df_z_customer_standard_filling_reference.set_index(['Dist_id_auxiliar'], inplace=True)
+    df_z_customer_standard_filling_reference.index = df_z_customer_standard_filling_reference.index.map(str)
+
+    df_store_txt_flat_file.set_index([ 'Diageo Customer ID', 'Store Code' ], inplace=True)
+    df_store_txt_flat_file.index = df_store_txt_flat_file.index.set_levels(df_store_txt_flat_file.index.levels[0].astype(str), level=0)
+    df_store_txt_flat_file.index = df_store_txt_flat_file.index.set_levels(df_store_txt_flat_file.index.levels[1].astype(str), level=1)
+
+    df_store_txt_flat_file = df_store_txt_flat_file[~df_store_txt_flat_file.index.duplicated(keep='last')]
+
+    columns_to_be_iterated = df_z_customer_standard_filling_reference.columns[3:]
+
+    for index in df_new_stores.index:
+
+        distributor = str(df_new_stores.loc[index, 'Aux_column_dist_number'])
+        store_code = str(df_new_stores.loc[index, 'Store Nbr'])
+
+        try:
+            dictionary_version = df_z_customer_standard_filling_reference.loc[distributor, 'Dictionary_version']
+        except:
+            print('Dictionary_version not found')
+            logger.logger.error('Dictionary_version not found')
+            sys.exit()
+        
+        if (dictionary_version == 'B'):
+            dict_store_vs_customer_catalog = dict_store_vs_customer_catalog_B
+        else:
+            dict_store_vs_customer_catalog = dict_store_vs_customer_catalog_A
+
+        for column_of_df_new_stores in columns_to_be_iterated:
+
+            if column_of_df_new_stores in dict_store_vs_customer_catalog:
+                column_df_store_txt_flat_file = dict_store_vs_customer_catalog[column_of_df_new_stores]
+
+            try:
+                result = df_z_customer_standard_filling_reference.loc[distributor, column_of_df_new_stores]
+            except:
+                print('Not possible finding column - {} - in df_z_customer_standard_filling_reference File'.format(column_of_df_new_stores))
+
+
+            if(result == 'N'):
+                try:
+                    df_new_stores.loc[index, column_of_df_new_stores] = df_store_txt_flat_file.loc[(distributor, store_code), column_df_store_txt_flat_file]
+                except:
+                    print('Not possible assigning Dist - {} and Store - {} from Store.txt file'.format(distributor, store_code))
+            else:
+                try:
+                    df_new_stores.loc[index, column_of_df_new_stores] = result
+                except:
+                    print('Error when trying to assign from reference_customer file')
+
+    return df_new_stores
+
+
+def sanitizing_df_store_txt_flat_file(df_store_txt_flat_file):
+
+    df_store_txt_flat_file['Store Code'] = df_store_txt_flat_file['Store Code'].str.lstrip('0')
+    df_store_txt_flat_file['Store Code'] = df_store_txt_flat_file['Store Code'].str.strip()
+    df_store_txt_flat_file['Store Code'] = df_store_txt_flat_file['Store Code'].str[:12]
+
+    return df_store_txt_flat_file
+
+
 # Getting current and previous month
 def get_previous_and_current_month_period():
     
@@ -577,6 +719,8 @@ def main():
         system_paths = system_paths_dataframes_and_root_path[:5]
         root_path = system_paths_dataframes_and_root_path[5]
         entrepidus_stock_file_path = system_paths_dataframes_and_root_path[6]
+        store_txt_file_path = system_paths_dataframes_and_root_path[7]
+        customer_filling_reference_file_path = system_paths_dataframes_and_root_path[8]
     except:
         logger.logger.error('Not possible  getting_system_paths')
         print('Not possible getting_system_paths')
@@ -699,7 +843,66 @@ def main():
         df_new_stores = registering_new_stores(new_stores, df_new_stores)
     except:
         logger.logger.error('Not possible executing function registering_new_stores')
-        print('Not possible creating_new_stores_dataframe')
+        print('Not possible executing function registering_new_stores')
+    
+
+    result_loading_store_txt_file_and_customer_filling_reference = True
+    if (len(new_stores) > 0):
+        try:
+            print('loading_store_txt_file and customer_filling_reference')
+            store_txt_and_customer_filling_reference = loading_store_txt_file_and_customer_filling_reference(
+                store_txt_file_path, 
+                STR_indicator,
+                customer_filling_reference_file_path)
+        except:
+            result_loading_store_txt_file_and_customer_filling_reference = False
+            logger.logger.error('Not possible loading_store_txt_file_and_customer_filling_reference')
+            print('Not possible loading_store_txt_file_and_customer_filling_reference')
+            print('** Please verify if the store.txt file is encoded as UTF-8 **')
+        finally:
+            if result_loading_store_txt_file_and_customer_filling_reference:
+                df_store_txt_flat_file = store_txt_and_customer_filling_reference[0]
+                df_z_customer_standard_filling_reference = store_txt_and_customer_filling_reference[1]
+    else:
+        result_loading_store_txt_file_and_customer_filling_reference = False
+
+
+    if result_loading_store_txt_file_and_customer_filling_reference:
+        try:
+            print('sanitizing df_store_txt_flat_file')
+            df_store_txt_flat_file = sanitizing_df_store_txt_flat_file(df_store_txt_flat_file)
+        except:
+            logger.logger.error('Not possible sanitizing_df_store_txt_flat_file')
+            print('sanitizing_df_store_txt_flat_file')
+
+    declaring_dictionaries_result = True
+    try:
+        dictionaries = declaring_dictionaries()
+    except:
+        declaring_dictionaries_result = False
+        logger.logger.error('Not possible declaring_dictionaries')
+        print('Not possible declaring_dictionaries')
+    finally:
+        if declaring_dictionaries_result:
+            try:
+                dict_store_vs_customer_catalog_A = dictionaries[0]
+                dict_store_vs_customer_catalog_B = dictionaries[1]
+            except:
+                print('Not possible assigning dictionaries')
+
+
+    if result_loading_store_txt_file_and_customer_filling_reference:   
+        try:
+            print('filling new stores details')
+            df_new_stores = filling_new_stores_details(df_new_stores,
+                df_store_txt_flat_file,
+                df_z_customer_standard_filling_reference,
+                dict_store_vs_customer_catalog_A,
+                dict_store_vs_customer_catalog_B)       
+        except:
+            logger.logger.error('Not possible filling_new_stores_details')
+            print('Error filling_new_stores_details')
+
 
     try:
         print('Checking tax values columns...')
