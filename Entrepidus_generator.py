@@ -74,7 +74,7 @@ def loading_dataframes(system_paths):
         dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str,
         'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }, header=0).fillna('')
     except:
-        logger.logger.error('Not possible opening the file{}'.format(sales_file_path))
+        logger.logger.error('Not possible opening the file {}'.format(sales_file_path))
         print('Not possible opening the file - {}'.format(sales_file_path))
         sys.exit()
 
@@ -83,7 +83,7 @@ def loading_dataframes(system_paths):
         df_pebac_product_reference = pd.read_excel(pebac_master_data_product_file_path, converters = { 'Dist_Code': str, 'Product_store_id': str} ).fillna('')
         df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True)        
     except:
-        logger.logger.info('Not possible opening the file / setting index{}'.format(pebac_master_data_product_file_path))
+        logger.logger.info('Not possible opening the file / setting index {}'.format(pebac_master_data_product_file_path))
         print('Not possible opening the file - {}'.format(pebac_master_data_product_file_path))
         sys.exit()
 
@@ -91,7 +91,7 @@ def loading_dataframes(system_paths):
     try:
         df_product_master = pd.read_excel(product_master_path, dtype={ 'Material': str }).fillna('')      
     except:
-        logger.logger.info('Not possible opening the file / setting index{}'.format(product_master_path))
+        logger.logger.info('Not possible opening the file {}'.format(product_master_path))
         print('Not possible opening the file - {}'.format(product_master_path))
         sys.exit()
 
@@ -99,7 +99,7 @@ def loading_dataframes(system_paths):
     try:
         df_customer_catalog = pd.read_excel(customer_catalog_file_path, converters={ 'Distributor_id':str, 'Store_id':str } ).fillna('')       
     except:
-        logger.logger.info('Not possible opening the file / setting index{}'.format(customer_catalog_file_path))
+        logger.logger.info('Not possible opening the file {}'.format(customer_catalog_file_path))
         print('Not possible opening the file - {}'.format(customer_catalog_file_path))
         sys.exit()
     
@@ -483,7 +483,7 @@ def declaring_dictionaries():
         'State or Region': 'Region',
         'Occasion Segment': 'Sales Representative Code',
         'Occasion': 'Sales Representative Name',
-        'Store/Business Type': 'Local Segment 2',
+        'Store/Business Type': 'Local Segment 2',
         'Channel': 'Local Segment 1',
         'Trade': 'Local Segment 2',
         'Subchannel': 'Local Segment 3',
@@ -498,7 +498,7 @@ def declaring_dictionaries():
         'State or Region': 'Region',
         'Occasion Segment': 'Sales Representative Code',
         'Occasion': 'Sales Representative Name',
-        'Store/Business Type': 'Local Segment 2',
+        'Store/Business Type': 'Local Segment 2',
         'Channel': 'Local Segment 1',
         'Trade': 'Local Segment 1',
         'Subchannel': 'Local Segment 3',
@@ -559,7 +559,8 @@ def filling_new_stores_details(
                 try:
                     df_new_stores.loc[index, column_of_df_new_stores] = df_store_txt_flat_file.loc[(distributor, store_code), column_df_store_txt_flat_file]
                 except:
-                    print('Not possible assigning Dist - {} and Store - {} from Store.txt file'.format(distributor, store_code))
+                    print('Not possible assigning Dist - {} and Store - {} from Store.txt file. Columns {} -> {}'.format(distributor,
+                    store_code, column_of_df_new_stores, column_df_store_txt_flat_file))
             else:
                 try:
                     df_new_stores.loc[index, column_of_df_new_stores] = result
