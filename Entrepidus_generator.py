@@ -566,6 +566,15 @@ def filling_new_stores_details(
                     df_new_stores.loc[index, column_of_df_new_stores] = result
                 except:
                     print('Error when trying to assign from reference_customer file')
+            
+            try:
+                df_new_stores['Trade'] = df_new_stores['Trade'].astype(str)
+                df_new_stores['Store Name'] = df_new_stores['Store Name'].astype(str)
+                
+                df_new_stores['Trade'] = df_new_stores['Trade'].str[:15]
+                df_new_stores['Store Name'] = df_new_stores['Store Name'].str[:100]
+            except Exception as error:
+                print(error)
 
     return df_new_stores
 
@@ -600,6 +609,12 @@ def get_previous_and_current_month_period():
 
 #Final formatting entrepidus
 def entrepidus_formatting(df_entrepidus):
+
+    try:
+        df_entrepidus['Store Name'] = df_entrepidus['Store Name'].astype(str)
+        df_entrepidus['Store Name'] = df_entrepidus['Store Name'].str[:100]
+    except:
+        print('Not possible cutting store name field from Entrepidus')
 
     df_entrepidus.reset_index(inplace=True)
     try:
@@ -876,6 +891,7 @@ def main():
             logger.logger.error('Not possible sanitizing_df_store_txt_flat_file')
             print('sanitizing_df_store_txt_flat_file')
 
+
     declaring_dictionaries_result = True
     try:
         dictionaries = declaring_dictionaries()
@@ -911,7 +927,7 @@ def main():
     except:
         logger.logger.error('Not possible verifying_values_with_without_tax(df_entrepidus)')
         print('Not possible verifying_values_with_without_tax(df_entrepidus')
-
+    
     try:
         print('Formatting Entrepidus...')
         df_entrepidus = entrepidus_formatting(df_entrepidus)
