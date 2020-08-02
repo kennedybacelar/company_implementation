@@ -81,7 +81,8 @@ def loading_dataframes(system_paths):
     #Loading Data Frame of (De->Para) / Product Customer -> Diageo SKU
     try:
         df_pebac_product_reference = pd.read_excel(pebac_master_data_product_file_path, converters = { 'Dist_Code': str, 'Product_store_id': str} ).fillna('')
-        df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True)        
+        df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True) 
+        df_pebac_product_reference = df_pebac_product_reference[~df_pebac_product_reference.index.duplicated(keep='first')]       
     except:
         logger.logger.info('Not possible opening the file / setting index {}'.format(pebac_master_data_product_file_path))
         print('Not possible opening the file - {}'.format(pebac_master_data_product_file_path))
@@ -169,17 +170,14 @@ def declaring_entrepidus_df():
         'Commune', 'Merchandiser', 'Chain SKU Code', 'Diageo SKU Code',	'Desc Producto & Cód.',
         'Category', 'Sub Category', 'Brand', 'Brand Variant', 'Unit Size', 'Unit Sold', 
         'Sales Value wotax', 'Sales Value wtax', 'Currency Code', 'Distributor', 'Country', 
-        'Inventory Unit', 'Diageo_dist_auxiliar_column']
+        'Inventory Unit', 'Diageo_dist_auxiliar_column', 'Aux_product_relevance']
 
     try:
-        try:
-            df_entrepidus = pd.DataFrame(columns=entrepidus_columns).fillna('')
-        except IOError as err:
-            logger.logger.info('{}'.format(err))
-            sys.exit(err)
-    except:
+        df_entrepidus = pd.DataFrame(columns=entrepidus_columns).fillna('')
+    except Exception as error:
         logger.logger.info('Not possible creating DataFrame df_entrepidus')
-        sys.exit('Not possible creating DataFrame df_entrepidus')
+        print(error)
+        raise Exception('Not possible creating DataFrame df_entrepidus')
     
     return df_entrepidus
 
@@ -209,7 +207,8 @@ def setting_df_entrepidus_and_sales(df_entrepidus, df_sales):
         df_entrepidus['Unit Sold'] = pd.to_numeric(df_entrepidus['Unit Sold'])
         #Lowering entrepidus series
         df_entrepidus['Aux_unit_of_measure'] = df_entrepidus['Aux_unit_of_measure'].astype(str).fillna('').str.lower()
-    except:
+    except Exception as error:
+        print(error)
         logger.logger.error('Not possible setting_df_entrepidus / sales')
         sys.exit('Not possible setting_df_entrepidus')
     
@@ -217,7 +216,6 @@ def setting_df_entrepidus_and_sales(df_entrepidus, df_sales):
 
 def assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names):
 
-    list_of_distributors = df_entrepidus['Diageo_dist_auxiliar_column'].unique()
     df_entrepidus.set_index(['Diageo_dist_auxiliar_column'], inplace=True)
     df_entrepidus.index = df_entrepidus.index.map(str)
 
@@ -225,25 +223,27 @@ def assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names)
     df_dist_names.index = df_dist_names.index.map(str)
     df_dist_names = df_dist_names[~df_dist_names.index.duplicated(keep='first')]
 
-    for single_distributor in list_of_distributors:
-        single_distributor = str(single_distributor)
+    for single_distributor in df_entrepidus.index.unique():
 
         try:
             distributor_correct_name = df_dist_names.loc[single_distributor, 'Distributor_name']
             distributor_correct_country = df_dist_names.loc[single_distributor, 'Distributor_country']
-        except:
+        except Exception as error:
+            print(error)
             print('Dist name columns Distributor_name or Distributor_country not found')
             logger.logger.error('Dist name columns Distributor_name or Distributor_country not found')
 
         try:
             df_entrepidus.loc[single_distributor, 'Distributor'] = distributor_correct_name
-        except:
+        except Exception as error:
+            print(error)
             print('Error- Distributor name in dist_names file: {}'.format(single_distributor))
             logger.logger.error('Not possible assigning distributor name from Dist_names_file - {}'.format(single_distributor))
         
         try:
             df_entrepidus.loc[single_distributor, 'Country'] = distributor_correct_country
-        except:
+        except Exception as error:
+            print(error)
             print('Not possible assigning distributor country from Dist_names_file - {}'.format(single_distributor))
             logger.logger.error('Not possible assigning distributor country from Dist_names_file - {}'.format(single_distributor))
         
@@ -253,29 +253,29 @@ def assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names)
 
 def searching_diageo_sku(df_sales, df_product_master, df_entrepidus):
 
-    list_of_distributors = df_sales['Diageo Customer ID'].unique()
-    
     df_sales = df_sales.set_index(['Diageo Customer ID'])
     df_sales.index = df_sales.index.map(str)
 
     df_entrepidus = df_entrepidus.set_index(['Diageo_dist_auxiliar_column', 'Chain SKU Code'])
     df_entrepidus.index = df_entrepidus.index.set_levels(df_entrepidus.index.levels[0].astype(str), level=0)
     df_entrepidus.index = df_entrepidus.index.set_levels(df_entrepidus.index.levels[1].astype(str), level=1)
-        
-    for single_distributor in list_of_distributors:
-        single_distributor  = str(single_distributor)
-        products_list_by_distributor = df_sales.loc[single_distributor]['Product Code'].unique()
 
-        for single_product_by_distributor in products_list_by_distributor:
-            single_product_by_distributor = str(single_product_by_distributor)
+    for single_distributor, single_product_by_distributor in df_entrepidus.index.unique():
 
-            try:
-                diageo_sku = df_product_master.loc[(single_distributor, single_product_by_distributor), 'Diageo_Sku'].values[0]
-                df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = diageo_sku
-            except:
-                df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = '0000 - NOT FOUND'
-                print('{} - New product found'.format(single_product_by_distributor))
-                logger.logger.warning('{} - Product not found'.format(single_product_by_distributor))
+        try:
+            diageo_sku = df_product_master.loc[(single_distributor, single_product_by_distributor), 'Diageo_Sku']
+            df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = diageo_sku
+        except:
+            df_entrepidus.loc[(single_distributor, single_product_by_distributor), 'Diageo SKU Code'] = '0000 - NOT FOUND'
+            print('{} - New product found'.format(single_product_by_distributor))
+            logger.logger.warning('{} - Product not found'.format(single_product_by_distributor))
+
+        try:
+            product_relevance = df_product_master.loc[(single_distributor, single_product_by_distributor), 'Relevant']
+            df_entrepidus.loc[( single_distributor, single_product_by_distributor ), 'Aux_product_relevance'] = product_relevance
+        except Exception as error:
+            print('Not possible assigning Product Relevancy: Dist: {} / Product: {}'.format(single_distributor, single_product_by_distributor))
+            logger.logger.error(error)
 
     df_entrepidus.reset_index(inplace = True)
     df_product_master.reset_index(inplace=True)
@@ -289,13 +289,11 @@ def filling_product_details(df_entrepidus, df_product_master):
     df_product_master.index = df_product_master.index.map(str) #Changing indexes into string
     df_product_master = df_product_master[~df_product_master.index.duplicated(keep='last')]
 
-    list_of_diageo_sku_unique = df_entrepidus['Diageo SKU Code'].unique()
-
     df_entrepidus.set_index(['Diageo SKU Code'], inplace=True)
     df_entrepidus.index = df_entrepidus.index.map(str) #Changing indexes into string
 
-    for specific_diageo_sku in list_of_diageo_sku_unique:
-        specific_diageo_sku = str(specific_diageo_sku)
+    for specific_diageo_sku in df_entrepidus.index.unique():
+        
         try:
             df_entrepidus['Desc Producto & Cód.'].loc[specific_diageo_sku] = df_product_master['Description'].loc[specific_diageo_sku]
             df_entrepidus['Category'].loc[specific_diageo_sku] = df_product_master['Main Group'].loc[specific_diageo_sku]
@@ -303,7 +301,7 @@ def filling_product_details(df_entrepidus, df_product_master):
             df_entrepidus['Brand'].loc[specific_diageo_sku] = df_product_master['Brand'].loc[specific_diageo_sku]
             df_entrepidus['Brand Variant'].loc[specific_diageo_sku] = df_product_master['Brand Variant'].loc[specific_diageo_sku]
             df_entrepidus['Unit Size'].loc[specific_diageo_sku] = df_product_master['Unit Size'].loc[specific_diageo_sku]
-        except:
+        except Exception as error:
             logger.logger.error('{} - Not possible filling this product details'.format(specific_diageo_sku))
         
     df_entrepidus.reset_index(inplace=True)
@@ -318,36 +316,28 @@ def calculating_quantity(df_entrepidus, df_pebac_product_reference):
     df_pebac_product_reference.index = df_pebac_product_reference.index.set_levels(df_pebac_product_reference.index.levels[0].astype(str), level=0)
     df_pebac_product_reference.index = df_pebac_product_reference.index.set_levels(df_pebac_product_reference.index.levels[1].astype(str), level=1)
 
-    list_of_distributors =  df_entrepidus['Diageo_dist_auxiliar_column'].unique()
+    df_entrepidus.set_index(['Diageo_dist_auxiliar_column', 'Chain SKU Code'], inplace=True)
+    df_entrepidus.index = df_entrepidus.index.set_levels(df_entrepidus.index.levels[0].astype(str), level=0)
+    df_entrepidus.index = df_entrepidus.index.set_levels(df_entrepidus.index.levels[1].astype(str), level=1)
 
-    for single_distributor in list_of_distributors:
-        single_distributor = str(single_distributor)
+    for single_distributor, single_product in df_entrepidus.index.unique():
 
-        filt_single_distributor = (df_entrepidus['Diageo_dist_auxiliar_column'] == single_distributor)
-        list_of_products_by_distributor = df_entrepidus.loc[filt_single_distributor, 'Chain SKU Code'].unique()
+        try:
+            multiplicative_factor = df_pebac_product_reference.loc[( single_distributor , single_product ), 'Scale']
+        except Exception as error:
+            logger.logger.info('multiplicative_factor not found in df_pebac_product_reference for Distributor - {} Product - {}'.format(single_distributor, single_product))
+            multiplicative_factor = 1
 
-        df_entrepidus['Diageo_dist_auxiliar_column'] = df_entrepidus['Diageo_dist_auxiliar_column'].astype(str).fillna('')
-        df_entrepidus['Chain SKU Code'] = df_entrepidus['Chain SKU Code'].astype(str).fillna('')
-
-        for single_product in list_of_products_by_distributor:
-            single_product = str(single_product)
-
-            try:
-                multiplicative_factor = df_pebac_product_reference.loc[( single_distributor , single_product ), 'Scale'].values
-                multiplicative_factor = multiplicative_factor[0]
-            except:
-                logger.logger.info('multiplicative_factor not found in df_pebac_product_reference for Distributor - {} Product - {}'.format(single_distributor, single_product))
-                multiplicative_factor = 1
-
-            try:
-                filt_key_dist_prod = (df_entrepidus['Diageo_dist_auxiliar_column'] == str(single_distributor) ) & (df_entrepidus['Chain SKU Code'] == str(single_product)) 
-                df_entrepidus.loc[filt_key_dist_prod, 'Unit Sold'] = df_entrepidus.loc[filt_key_dist_prod, 'Unit Sold'].multiply(multiplicative_factor)
-            except:
-                logger.logger.error(' Error multiplication - Bottles por Physical Case - dist/product {}/{}'.format(single_distributor, single_product))
+        try:
+            df_entrepidus.loc[( single_distributor , single_product ), 'Unit Sold'] = df_entrepidus.loc[( single_distributor , single_product ), 'Unit Sold'].multiply(multiplicative_factor)
+        except Exception as error:
+            print(error)
+            logger.logger.error(' Error multiplication - Bottles por Physical Case - dist/product {}/{}'.format(single_distributor, single_product))
             
     try:
         df_entrepidus['Unit Sold'] = df_entrepidus['Unit Sold'].round(0).astype(int)
-    except:
+    except Exception as error:
+        print(error)
         logger.logger.error('Not possible rounding df_entrepidus[Unit Sold]')
 
     df_pebac_product_reference.reset_index(inplace=True)
@@ -364,36 +354,28 @@ def getting_store_name(df_entrepidus, df_customer_catalog):
     #Changing the first level of a multindex to String
     df_customer_catalog.index = df_customer_catalog.index.set_levels(df_customer_catalog.index.levels[0].astype(str), level=0)
     df_customer_catalog.index = df_customer_catalog.index.set_levels(df_customer_catalog.index.levels[1].astype(str), level=1)
+    df_customer_catalog = df_customer_catalog[~df_customer_catalog.index.duplicated(keep='first')]
+
+    df_entrepidus.set_index(['Diageo_dist_auxiliar_column', 'Store Number'], inplace=True)
+
+    df_entrepidus.index = df_entrepidus.index.set_levels(df_entrepidus.index.levels[0].astype(str), level=0)
+    df_entrepidus.index = df_entrepidus.index.set_levels(df_entrepidus.index.levels[1].astype(str), level=1)
+
+    for single_distributor, unique_store in df_entrepidus.index.unique():
+
+        try:
+            store_name = df_customer_catalog.loc[[(single_distributor, unique_store)], 'Store_name']
+        except:
+            new_unique_store = single_distributor + '|' + unique_store
+            new_stores.append(new_unique_store)
+            store_name = '0000 - NOT FOUND'
+
+        try:
+            df_entrepidus.loc[( single_distributor, unique_store ), 'Store Name'] = store_name
+        except Exception as error:
+            print(error)
     
-    list_of_distributors =  df_entrepidus['Diageo_dist_auxiliar_column'].unique()
-
-    df_entrepidus['Diageo_dist_auxiliar_column'] = df_entrepidus['Diageo_dist_auxiliar_column'].astype(str).fillna('')
-    df_entrepidus['Store Number'] = df_entrepidus['Store Number'].astype(str).fillna('')
-
-    for single_distributor in list_of_distributors:
-        single_distributor = str(single_distributor)
-        
-        filt_single_distributor = (df_entrepidus['Diageo_dist_auxiliar_column'] == single_distributor)
-        list_of_unique_stores_by_distributor = df_entrepidus.loc[(filt_single_distributor), 'Store Number'].unique()
-
-        
-        for unique_store in list_of_unique_stores_by_distributor:
-            unique_store = str(unique_store)
-
-            try:
-                store_name = df_customer_catalog.loc[[(single_distributor, unique_store)], 'Store_name'].values
-                store_name = store_name[0]
-            except:
-                new_unique_store = single_distributor + '|' + unique_store
-                new_stores.append(new_unique_store)
-                store_name = '0000 - NOT FOUND'
-
-            try:
-                filt_single_store_by_distributor = ((df_entrepidus['Diageo_dist_auxiliar_column'] == str(single_distributor)) & (df_entrepidus['Store Number'] == str(unique_store)))
-                df_entrepidus.loc[(filt_single_store_by_distributor), 'Store Name'] = store_name
-            except:
-                pass
-
+    df_entrepidus.reset_index(inplace=True)
     df_customer_catalog.reset_index(inplace=True)
 
     return [df_entrepidus, new_stores]
@@ -459,14 +441,16 @@ def loading_store_txt_file_and_customer_filling_reference(
         df_store_txt_flat_file = pd.read_csv(store_txt_file_path, encoding='utf-8',
             names=df_store_txt_file_columns, sep=';', low_memory=False,
             dtype=str, header=store_header).fillna('')
-    except:
+    except Exception as error:
+        print(error)
         logger.logger.error('Not possible loading df_store_txt_flat_file')
         print('Not possible loading df_store_txt_flat_file')
     
     try:
         df_z_customer_standard_filling_reference = pd.read_excel(customer_filling_reference_file_path, 
         dtype=str).fillna('')
-    except:
+    except Exception as error:
+        print(error)
         logger.logger.error('Not possible loading customer_filling_reference_file_path')
         print('Not possible loading customer_filling_reference_file_path')
 
@@ -534,7 +518,8 @@ def filling_new_stores_details(
 
         try:
             dictionary_version = df_z_customer_standard_filling_reference.loc[distributor, 'Dictionary_version']
-        except:
+        except Exception as error:
+            print(error)
             print('Dictionary_version not found')
             logger.logger.error('Dictionary_version not found')
             sys.exit()
@@ -551,20 +536,23 @@ def filling_new_stores_details(
 
             try:
                 result = df_z_customer_standard_filling_reference.loc[distributor, column_of_df_new_stores]
-            except:
+            except Exception as error:
+                print(error)
                 print('Not possible finding column - {} - in df_z_customer_standard_filling_reference File'.format(column_of_df_new_stores))
 
 
             if(result == 'N'):
                 try:
                     df_new_stores.loc[index, column_of_df_new_stores] = df_store_txt_flat_file.loc[(distributor, store_code), column_df_store_txt_flat_file]
-                except:
+                except Exception as error:
+                    print(error)
                     print('Not possible assigning Dist - {} and Store - {} from Store.txt file. Columns {} -> {}'.format(distributor,
                     store_code, column_of_df_new_stores, column_df_store_txt_flat_file))
             else:
                 try:
                     df_new_stores.loc[index, column_of_df_new_stores] = result
-                except:
+                except Exception as error:
+                    print(error)
                     print('Error when trying to assign from reference_customer file')
             
             try:
@@ -607,20 +595,28 @@ def get_previous_and_current_month_period():
 
     return [current_month, previous_month]
 
+
+def discarding_non_relevant_products(df_entrepidus):
+
+    df_entrepidus = df_entrepidus.drop(df_entrepidus[df_entrepidus['Aux_product_relevance'] == 'N'].index)
+    return df_entrepidus
+
+
 #Final formatting entrepidus
 def entrepidus_formatting(df_entrepidus):
 
     try:
         df_entrepidus['Store Name'] = df_entrepidus['Store Name'].astype(str)
         df_entrepidus['Store Name'] = df_entrepidus['Store Name'].str[:100]
-    except:
+    except Exception as error:
+        print(error)
         print('Not possible cutting store name field from Entrepidus')
 
     df_entrepidus.reset_index(inplace=True)
     try:
         df_entrepidus.drop(columns=['level_0', 'index'], inplace=True)
-    except:
-        logger.logger.warning('Not possible dropping columns to generate excel file')
+    except Exception as error:
+        logger.logger.warning(error)
 
     entrepidus_columns = ['Diageo_dist_auxiliar_column', 'Date', 'Store Number', 'Store Name', 'Chain', 'Supervisor', 'Region',
         'Commune', 'Merchandiser', 'Chain SKU Code', 'Diageo SKU Code',	'Desc Producto & Cód.',
@@ -673,7 +669,8 @@ def formatting_stock_file(df_entrepidus_stock):
     
     try:
         df_entrepidus_stock['Inventory Unit'] = pd.to_numeric(df_entrepidus_stock['Inventory Unit']).fillna(0)
-    except:
+    except Exception as error:
+        print(error)
         print('Not possible changing to Numeric column Inventory Unit of df_entrepidus_stock')
         logger.logger.error('Not possible changing to Numeric column Inventory Unit of df_entrepidus_stock')
 
@@ -830,7 +827,8 @@ def main():
     try:
         print('Calculating quantity...')
         df_entrepidus = calculating_quantity(df_entrepidus, df_pebac_product_reference)
-    except:
+    except Exception as error:
+        print(error)
         logger.logger.error('Not possible executing function calculating_quantity')
         print('Not possible calculating products quantities using pebac_product_reference file')
         os.system('pause')
@@ -841,7 +839,8 @@ def main():
         mapping_stores = getting_store_name(df_entrepidus, df_customer_catalog)
         df_entrepidus = mapping_stores[0]
         new_stores = mapping_stores[1]
-    except:
+    except Exception as error:
+        print(error)
         logger.logger.error('Not possible executing function getting_store_name')
         print('Not possible getting store names')
         os.system('pause')
@@ -927,6 +926,12 @@ def main():
     except:
         logger.logger.error('Not possible verifying_values_with_without_tax(df_entrepidus)')
         print('Not possible verifying_values_with_without_tax(df_entrepidus')
+    
+    try:
+        print('discarding non relevant products')
+        df_entrepidus = discarding_non_relevant_products(df_entrepidus)
+    except Exception as error:
+        print(error)
     
     try:
         print('Formatting Entrepidus...')
