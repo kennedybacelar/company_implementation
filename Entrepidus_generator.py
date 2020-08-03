@@ -55,7 +55,7 @@ def getting_system_paths(root_path, country, STR_indicator):
 
     return system_paths
 
-def loading_dataframes(system_paths):
+def loading_dataframes(system_paths, STR_indicator):
 
     sales_file_path = system_paths[0]
     pebac_master_data_product_file_path = system_paths[1]
@@ -68,11 +68,16 @@ def loading_dataframes(system_paths):
     'Quantity', 'Unit of measure', 'Total Amount WITHOUT TAX', 'Total Amount WITH TAX', 
     'Currency Code', 'Sales Representative Code']
 
+    if STR_indicator:
+        sales_header = 0
+    else:
+        sales_header = None
+
     #Loading Data Frame of Sales File
     try:
         df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns,sep=';', low_memory=False,
         dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str,
-        'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }, header=0).fillna('')
+        'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }, header=sales_header).fillna('')
     except:
         logger.logger.error('Not possible opening the file {}'.format(sales_file_path))
         print('Not possible opening the file - {}'.format(sales_file_path))
@@ -429,7 +434,7 @@ def loading_store_txt_file_and_customer_filling_reference(
     customer_filling_reference_file_path):
 
     if STR_indicator:
-        store_header = 1
+        store_header = 0
     else:
         store_header = None
 
@@ -440,7 +445,7 @@ def loading_store_txt_file_and_customer_filling_reference(
     try:
         df_store_txt_flat_file = pd.read_csv(store_txt_file_path, encoding='utf-8',
             names=df_store_txt_file_columns, sep=';', low_memory=False,
-            dtype=str, header=store_header).fillna('')
+            dtype=str, header=store_header, index_col=False).fillna('')
     except Exception as error:
         print(error)
         logger.logger.error('Not possible loading df_store_txt_flat_file')
@@ -742,7 +747,7 @@ def main():
 
     try:
         print('Loading data frames...')
-        dataframes = loading_dataframes(system_paths)
+        dataframes = loading_dataframes(system_paths, STR_indicator)
         df_sales = dataframes[0]
         df_pebac_product_reference = dataframes[1]
         df_product_master = dataframes[2]
