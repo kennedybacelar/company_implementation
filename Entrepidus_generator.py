@@ -160,9 +160,6 @@ def sanitizing_sales_file(df_sales):
     #Cutting characters after the 12th position from Store Code column
     df_sales['Store code'] = df_sales['Store code'].str[:12]
 
-    #Turning below field into string
-    df_sales['Product Code'] = df_sales['Product Code'].astype(str).fillna('')
-
     return df_sales
 
 def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
