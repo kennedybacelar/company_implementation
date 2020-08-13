@@ -164,7 +164,7 @@ def sanitizing_sales_file(df_sales):
 
 def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
 
-    df_pebac_product_reference.columns = [column.encode('mbcs').decode('mbcs', 'ignore') for column in df_pebac_product_reference.columns]
+    df_pebac_product_reference.columns = [column.encode('mbcs', 'ignore').decode('mbcs', 'ignore') for column in df_pebac_product_reference.columns]
     df_pebac_product_reference['Scale'] = pd.to_numeric(df_pebac_product_reference['Scale']).fillna(1)
 
     return df_pebac_product_reference
