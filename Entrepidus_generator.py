@@ -160,6 +160,9 @@ def sanitizing_sales_file(df_sales):
     #Cutting characters after the 12th position from Store Code column
     df_sales['Store code'] = df_sales['Store code'].str[:12]
 
+    #Turning below field into string
+    df_sales['Product Code'] = df_sales['Product Code'].astype(str).fillna('')
+
     return df_sales
 
 def sanitizing_df_pebac_product_reference(df_pebac_product_reference):
@@ -206,7 +209,6 @@ def setting_df_entrepidus_and_sales(df_entrepidus, df_sales):
 
         #Changing to String below Columns
         df_entrepidus['Diageo_dist_auxiliar_column'] = df_entrepidus['Diageo_dist_auxiliar_column'].astype(str).fillna('')
-        df_sales['Product Code'] = df_sales['Product Code'].astype(str).fillna('')
         df_entrepidus['Store Number'] = df_entrepidus['Store Number'].astype(str).fillna('')
         #Changing to Numeric below Columns
         df_entrepidus['Unit Sold'] = pd.to_numeric(df_entrepidus['Unit Sold'])
@@ -217,7 +219,7 @@ def setting_df_entrepidus_and_sales(df_entrepidus, df_sales):
         logger.logger.error('Not possible setting_df_entrepidus / sales')
         sys.exit('Not possible setting_df_entrepidus')
     
-    return [df_entrepidus, df_sales]
+    return df_entrepidus
 
 def assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names):
 
@@ -788,9 +790,7 @@ def main():
 
     try:
         print('Assigning sales to entrepidus...')
-        dataframes_entrepidus_and_sales = setting_df_entrepidus_and_sales(df_entrepidus, df_sales)
-        df_entrepidus = dataframes_entrepidus_and_sales[0]
-        df_sales = dataframes_entrepidus_and_sales[1]
+        df_entrepidus = setting_df_entrepidus_and_sales(df_entrepidus, df_sales)
     except:
         logger.logger.error('Not possible executing function setting_df_entrepidus_and_sales')
         print('Not possible executing function setting_df_entrepidus_and_sales')
