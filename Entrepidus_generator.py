@@ -484,13 +484,13 @@ def declaring_dictionaries():
         'Store Name': 'Store Name',
         'City': 'City',
         'State or Region': 'Region',
-        'Occasion Segment': 'Sales Representative Code',
+        'Occasion Segment': 'Local Segment 5',
         'Occasion': 'Sales Representative Name',
         'Store/Business Type': 'Local Segment 2',
         'Channel': 'Local Segment 1',
-        'Trade': 'Local Segment 1',
+        'Trade': 'Local Segment 2',
         'Subchannel': 'Local Segment 3',
-        'Segment': 'Local Segment 2'
+        'Segment': 'Local Segment 4'
     }
 
     return [dict_store_vs_customer_catalog_A, dict_store_vs_customer_catalog_B]
