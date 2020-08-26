@@ -581,6 +581,16 @@ def sanitizing_df_store_txt_flat_file(df_store_txt_flat_file):
     return df_store_txt_flat_file
 
 
+def sanitizing_df_new_stores(df_new_stores):
+
+    df_new_stores['Trade'] = df_new_stores['Trade'].str[:15]
+    df_new_stores['Channel'] = df_new_stores['Channel'].str[:30]
+    df_new_stores['Subchannel'] = df_new_stores['Subchannel'].str[:25]
+    df_new_stores['Segment'] = df_new_stores['Segment'].str[:30]
+
+    return df_new_stores
+
+
 # Getting current and previous month
 def get_previous_and_current_month_period():
     
@@ -921,6 +931,13 @@ def main():
         except:
             logger.logger.error('Not possible filling_new_stores_details')
             print('Error filling_new_stores_details')
+        
+        try:
+            print('sanitizing df_new_stores')
+            df_new_stores = sanitizing_df_new_stores(df_new_stores)
+        except Exception as error:
+            print(error)
+            print('Not possible sanitizing_df_new_stores')
 
 
     try:
