@@ -439,7 +439,8 @@ def loading_store_txt_file_and_customer_filling_reference(
 
     df_store_txt_file_columns = [ 'Diageo Customer ID', 'Diageo Customer Name', 'Store Code',
     'Store Name','City','Region', 'Sales Representative Code',
-    'Sales Representative Name', 'Local Segment 1','Local Segment 2', 'Local Segment 3', 'Local Segment 4']
+    'Sales Representative Name', 'Local Segment 1','Local Segment 2',
+    'Local Segment 3', 'Local Segment 4', 'Local Segment 5']
 
     try:
         df_store_txt_flat_file = pd.read_csv(store_txt_file_path, encoding='utf-8',
