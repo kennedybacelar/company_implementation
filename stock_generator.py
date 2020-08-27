@@ -318,6 +318,13 @@ def main():
         df_entrepidus_stock = content[0]
     except Exception as error:
         print(error)
+
+    try:
+        print('assigning dist_names_information')
+        success, content = assigning_dist_names_information(df_entrepidus_stock, df_dist_names)
+        df_entrepidus_stock = content[0]
+    except Exception as error:
+        print(error)
     
     try:
         print('searching_diageo_sku...')
