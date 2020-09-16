@@ -104,6 +104,14 @@ def assigning_stock_to_entrepidus(df_stock, df_entrepidus_stock):
     return (True, [df_entrepidus_stock])
 
 
+def sanitizing_entrepidus_stock(df_entrepidus_stock):
+
+    df_entrepidus_stock['Chain SKU Code'] = df_entrepidus_stock['Chain SKU Code'].str.lstrip('0')
+    df_entrepidus_stock['Chain SKU Code'] = df_entrepidus_stock['Chain SKU Code'].str.strip()
+
+    return (True, [df_entrepidus_stock])
+
+
 def assigning_dist_names_information(df_entrepidus_stock, df_dist_names):
 
     df_entrepidus_stock.set_index(['Diageo_dist_auxiliar_column'], inplace=True)
@@ -161,7 +169,6 @@ def searching_diageo_sku(df_entrepidus_stock, df_pebac_product_reference):
             print(error)
 
     df_entrepidus_stock.reset_index(inplace = True)
-    df_pebac_product_reference.reset_index(inplace=True)
     
     return (True, [df_entrepidus_stock])
 
@@ -186,8 +193,7 @@ def filling_product_details(df_entrepidus_stock, df_product_master):
             df_entrepidus_stock['Brand Variant'].loc[specific_diageo_sku] = df_product_master['Brand Variant'].loc[specific_diageo_sku]
             df_entrepidus_stock['Unit Size'].loc[specific_diageo_sku] = df_product_master['Unit Size'].loc[specific_diageo_sku]
         except Exception as error:
-            print(error)
-            print('{} - Not possible filling this product details'.format(specific_diageo_sku))
+            print('{}\n {} - Not possible filling this product details'.format(error, specific_diageo_sku))
         
     df_entrepidus_stock.reset_index(inplace=True)
 
@@ -197,15 +203,11 @@ def filling_product_details(df_entrepidus_stock, df_product_master):
 #Filling Entrepidus with quantities (Unit sold - after multiplying for the product tx)
 def calculating_quantity(df_entrepidus_stock, df_pebac_product_reference):
 
-    df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True)
-    #Changing the first level of a multindex to String
-    df_pebac_product_reference.index = df_pebac_product_reference.index.set_levels(df_pebac_product_reference.index.levels[0].astype(str), level=0)
-    df_pebac_product_reference.index = df_pebac_product_reference.index.set_levels(df_pebac_product_reference.index.levels[1].astype(str), level=1)
+    df_pebac_product_reference = df_pebac_product_reference[~df_pebac_product_reference.index.duplicated(keep='last')]
 
     df_entrepidus_stock.set_index(['Diageo_dist_auxiliar_column', 'Chain SKU Code'], inplace=True)
     df_entrepidus_stock.index = df_entrepidus_stock.index.set_levels(df_entrepidus_stock.index.levels[0].astype(str), level=0)
     df_entrepidus_stock.index = df_entrepidus_stock.index.set_levels(df_entrepidus_stock.index.levels[1].astype(str), level=1)
-    df_entrepidus_stock = df_entrepidus_stock[~df_entrepidus_stock.index.duplicated(keep='first')]
 
     for single_distributor, single_product in df_entrepidus_stock.index.unique():
 
@@ -233,7 +235,7 @@ def calculating_quantity(df_entrepidus_stock, df_pebac_product_reference):
 def formatting_stock_file(df_entrepidus_stock):
 
     try:
-        df_entrepidus_stock['Inventory Unit'] = pd.to_numeric(df_entrepidus_stock['Inventory Unit']).fillna(0)
+        df_entrepidus_stock['Inventory Unit'] = pd.to_numeric(df_entrepidus_stock['Inventory Unit'], errors='coerce').fillna(0)
     except Exception as error:
         print(error)
 
@@ -273,107 +275,135 @@ def main():
 
     try:
         print('getting_user_input...')
-        success, content = getting_user_input()
-        root_path = content[0]
-    except Exception as error:
-        print(error)
-        sys.exit()
-    
-    try:
-        print('defining_file_paths...')
-        success, content = defining_file_paths(root_path)
-
-        stock_file_path = content[0]
-        prod_ref_file_path = content[1]
-        product_master_path = content[2]
-        dist_names_file_path = content[3]
-    except Exception as error:
-        print(error)
-        sys.exit()
-    
-    try:
-        print('loading_stock_and_prod_ref_files...')
-        success, content = loading_stock_and_prod_ref_files(stock_file_path, prod_ref_file_path, 
-            product_master_path, dist_names_file_path)
-        
-        df_stock = content[0]
-        df_pebac_product_reference = content[1]
-        df_product_master = content[2]
-        df_dist_names = content[3]
-    except Exception as error:
-        print(error)
-        sys.exit()
-    
-    try:
-        print('creating_stock_entrepidus...')
-        success, content = creating_stock_entrepidus()
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print(error)
-        sys.exit()
-    
-    try:
-        print('assigning_stock_to_entrepidus...')
-        success, content = assigning_stock_to_entrepidus(df_stock, df_entrepidus_stock)
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print(error)
-
-    try:
-        print('assigning dist_names_information')
-        success, content = assigning_dist_names_information(df_entrepidus_stock, df_dist_names)
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print(error)
-    
-    try:
-        print('searching_diageo_sku...')
-        success, content = searching_diageo_sku(df_entrepidus_stock, df_pebac_product_reference)
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print('error searching_diageo_sku...')
-        print(error)
-        sys.exit()
-    
-    try:
-        print('filling_product_details...')
-        success, content = filling_product_details(df_entrepidus_stock, df_product_master)
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print(error)
-        print('filling_product_details... ')
-        sys.exit()
-    
-    try:
-        print('calculating quantity...')
-        success, content = calculating_quantity(df_entrepidus_stock, df_pebac_product_reference)
-        df_entrepidus_stock = content[0]
-    except Exception as error: 
-        print('error quantity')
-        print(error)
-     
-    try:
-        print('discarding_non_relevant_products')
-        sucess, content = discarding_non_relevant_products(df_entrepidus_stock)
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print(error)
-    
-    try:
-        print('formatting_stock_file(df_entrepidus_stock)')
-        success, content = formatting_stock_file(df_entrepidus_stock)
-        df_entrepidus_stock = content[0]
-    except Exception as error:
-        print(error)
-
-    try:
-        print('creating_csv_files')
-        success, content = creating_csv_files(df_entrepidus_stock, root_path)
+        success_getting_user_input, content_getting_user_input = getting_user_input()
     except Exception as error:
         print(error)
         sys.exit()
     finally:
-        if success:
+        if success_getting_user_input:
+            root_path = content_getting_user_input[0]
+    
+    try:
+        print('defining_file_paths...')
+        success_defining_file_paths, content_defining_file_paths = defining_file_paths(root_path)
+    except Exception as error:
+        print(error)
+        sys.exit()
+    finally:
+        if success_defining_file_paths:
+            stock_file_path = content_defining_file_paths[0]
+            prod_ref_file_path = content_defining_file_paths[1]
+            product_master_path = content_defining_file_paths[2]
+            dist_names_file_path = content_defining_file_paths[3]
+    
+    try:
+        print('loading_stock_and_prod_ref_files...')
+        success_loading_stock_and_prod_ref_files, content_loading_stock_and_prod_ref_files = loading_stock_and_prod_ref_files(stock_file_path,
+            prod_ref_file_path, product_master_path, dist_names_file_path)
+    except Exception as error:
+        print(error)
+        sys.exit()
+    finally:
+        if success_loading_stock_and_prod_ref_files:
+            df_stock = content_loading_stock_and_prod_ref_files[0]
+            df_pebac_product_reference = content_loading_stock_and_prod_ref_files[1]
+            df_product_master = content_loading_stock_and_prod_ref_files[2]
+            df_dist_names = content_loading_stock_and_prod_ref_files[3]
+    
+    try:
+        print('creating_stock_entrepidus...')
+        success_creating_stock_entrepidus, content_creating_stock_entrepidus = creating_stock_entrepidus()
+    except Exception as error:
+        print(error)
+        sys.exit()
+    finally:
+        if success_creating_stock_entrepidus:
+            df_entrepidus_stock = content_creating_stock_entrepidus[0]
+    
+    try:
+        print('assigning_stock_to_entrepidus...')
+        success_assigning_stock_to_entrepidus, content_assigning_stock_to_entrepidus = assigning_stock_to_entrepidus(df_stock, df_entrepidus_stock)
+    except Exception as error:
+        print(error)
+    finally:
+        if success_assigning_stock_to_entrepidus:
+            df_entrepidus_stock = content_assigning_stock_to_entrepidus[0]
+    
+    try:
+        print('Sanitizing Stock_Entrepidus')
+        success_sanitizing_entrepidus_stock, content_sanitizing_entrepidus_stock = sanitizing_entrepidus_stock(df_entrepidus_stock)
+    except Exception as error:
+        print('{} - Not possible sanitizing stock entrepidus'.format(error))
+        sys.exit()
+    finally:
+        if success_sanitizing_entrepidus_stock:
+            df_entrepidus_stock = content_sanitizing_entrepidus_stock[0]
+
+    try:
+        print('assigning dist_names_information')
+        success_assigning_dist_names_information, content_assigning_dist_names_information = assigning_dist_names_information(df_entrepidus_stock, df_dist_names)
+    except Exception as error:
+        print(error)
+    finally:
+        if success_assigning_dist_names_information:
+            df_entrepidus_stock = content_assigning_dist_names_information[0]
+    
+    try:
+        print('searching_diageo_sku...')
+        success_searching_diageo_sku, content_searching_diageo_sku = searching_diageo_sku(df_entrepidus_stock, df_pebac_product_reference)
+    except Exception as error:
+        print('{}\n error searching_diageo_sku...'.format(error))
+        sys.exit()
+    finally:
+        if success_searching_diageo_sku:
+            df_entrepidus_stock = content_searching_diageo_sku[0]
+    
+    try:
+        print('discarding_non_relevant_products')
+        sucess_discarding_non_relevant_products, content_discarding_non_relevant_products = discarding_non_relevant_products(df_entrepidus_stock)
+    except Exception as error:
+        print(error)
+    finally:
+        if sucess_discarding_non_relevant_products:
+            df_entrepidus_stock = content_discarding_non_relevant_products[0]
+    
+    try:
+        print('filling_product_details...')
+        success_filling_product_details, content_filling_product_details = filling_product_details(df_entrepidus_stock, df_product_master)
+    except Exception as error:
+        print('{} - Not possible filling_product_details!'.format(error))
+        sys.exit()
+    finally:
+        if success_filling_product_details:
+            df_entrepidus_stock = content_filling_product_details[0]
+
+    try:    
+        print('calculating quantity...')
+        success_calculating_quantity, content_calculating_quantity = calculating_quantity(df_entrepidus_stock, df_pebac_product_reference)
+    except Exception as error: 
+        print('error quantity')
+        print(error)
+    finally:
+        if success_calculating_quantity:
+            df_entrepidus_stock = content_calculating_quantity[0]
+    
+    try:
+        print('formatting_stock_file(df_entrepidus_stock)')
+        success_formatting_stock_file, content_formatting_stock_file = formatting_stock_file(df_entrepidus_stock)
+    except Exception as error:
+        print(error)
+    finally:
+        if success_formatting_stock_file:
+            df_entrepidus_stock = content_formatting_stock_file[0]
+
+    try:
+        print('creating_csv_files')
+        success_creating_csv_files, content_creating_csv_files = creating_csv_files(df_entrepidus_stock, root_path)
+    except Exception as error:
+        print(error)
+        sys.exit()
+    finally:
+        if success_creating_csv_files:
             print('Successfully finished!')
 
 
