@@ -24,6 +24,9 @@ class TestEntrepidus(unittest.TestCase):
 
         cls.df_dist_names_columns = ['Distributor_country', 'Distributor_id', 'Distributor_name']
 
+        cls.df_product_master_columns = ['Material', 'Description', 
+            'Main Group', 'Subcategory', 'Brand', 'Brand Variant', 'Unit Size']
+
 
     def test_getting_user_input(self):
 
@@ -190,6 +193,44 @@ class TestEntrepidus(unittest.TestCase):
         returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
 
         pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected)
+
+
+    def test_filling_product_details(self):
+
+        df_product_master = pd.DataFrame(columns=self.df_product_master_columns)
+        df_entrepidus = pd.DataFrame(columns=self.df_entrepidus_columns)
+        df_expected = pd.DataFrame(columns=self.df_entrepidus_columns)
+
+        update_prod_master = {
+            'Material': '999', 
+            'Description': 'Test description', 
+            'Main Group': 'Cachaça', 
+            'Subcategory': 'Pinga', 
+            'Brand': 'Vodka',
+            'Brand Variant': 'Ardente',
+            'Unit Size': 650
+        }
+
+        #I am doing this way just to update the DataFrame through a dict
+        df_product_master = df_product_master.append(update_prod_master, ignore_index=True)
+
+        df_entrepidus['Diageo SKU Code'] = ['999']
+
+        df_expected['Diageo SKU Code'] = ['999']
+        df_expected['Desc Producto & Cód.'] = ['Test description']
+        df_expected['Category'] = ['Cachaça']
+        df_expected['Sub Category'] = ['Pinga']
+        df_expected['Brand'] = ['Vodka']
+        df_expected['Brand Variant'] = ['Ardente']
+        df_expected['Unit Size'] = 650
+        
+        returned_df_entrepidus = Entrepidus_generator.filling_product_details(df_entrepidus, df_product_master)
+
+        #Sorting columns to obtain same columns order to both parsed and expected DataFrames
+        df_expected = df_expected.sort_index(axis=1, ascending=True)
+        returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
+
+        pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected, check_dtype=False)
 
 
 if __name__ == '__main__':
