@@ -8,22 +8,21 @@ class TestEntrepidus(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         
-        #Creating empty Sales DataFrame
         cls.df_sales_columns = ['Country', 'Diageo Customer ID', 'Diageo Customer Name', 
             'Invoice number', 'Type of Invoice', 'Invoice Date', 'Store code', 'Product Code', 
             'Quantity', 'Unit of measure', 'Total Amount WITHOUT TAX', 'Total Amount WITH TAX', 
             'Currency Code', 'Sales Representative Code']
 
-        #creating empty Product Reference DataFrame
         cls.df_pebac_product_reference_columns = ['Dist_Code', 'Distributor', 'Product_store_id', 'Country', 'Diageo_Sku',
             'Relevant', 'Scale']
 
-        #creating empty Entrepidus DataFrame
         cls.df_entrepidus_columns = ['Date', 'Store Number', 'Store Name', 'Chain', 'Supervisor', 'Region',
         'Commune', 'Merchandiser', 'Chain SKU Code', 'Diageo SKU Code',	'Desc Producto & Cód.',
         'Category', 'Sub Category', 'Brand', 'Brand Variant', 'Unit Size', 'Unit Sold', 
         'Sales Value wotax', 'Sales Value wtax', 'Currency Code', 'Distributor', 'Country', 
         'Inventory Unit', 'Diageo_dist_auxiliar_column', 'Aux_product_relevance']
+
+        cls.df_dist_names_columns = ['Distributor_country', 'Distributor_id', 'Distributor_name']
 
 
     def test_getting_user_input(self):
@@ -132,6 +131,32 @@ class TestEntrepidus(unittest.TestCase):
         df_expected = df_expected.append(df_expected_to_be_updated, ignore_index=True)
         
         pd.testing.assert_frame_equal(Entrepidus_generator.setting_df_entrepidus_and_sales(df_entrepidus, df_sales), df_expected, check_dtype=False)
+
+
+    def test_assigning_dist_names_and_country_to_entrepidus(self):
+
+        df_dist_names = pd.DataFrame(columns=self.df_dist_names_columns)
+        df_entrepidus = pd.DataFrame(columns=self.df_entrepidus_columns)
+        df_expected = pd.DataFrame(columns=self.df_entrepidus_columns)
+
+        df_dist_names['Distributor_country'] = ['Peru']
+        df_dist_names['Distributor_id'] = ['288039']
+        df_dist_names['Distributor_name'] = ['Jandy']
+
+        df_entrepidus['Diageo_dist_auxiliar_column'] = ['288039']
+        df_entrepidus['Distributor'] = ['Jandiii']
+        df_entrepidus['Country'] = ['PERIVIS']
+
+        df_expected['Diageo_dist_auxiliar_column'] = ['288039']
+        df_expected['Distributor'] = ['Jandy']
+        df_expected['Country'] = ['Peru']
+
+        returned_df_entrepidus = Entrepidus_generator.assigning_dist_names_and_country_to_entrepidus(df_entrepidus, df_dist_names)
+
+        df_expected = df_expected.sort_index(axis=1, ascending=True)
+        returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
+
+        pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected)
 
 
 if __name__ == '__main__':
