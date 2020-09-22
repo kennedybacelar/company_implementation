@@ -159,5 +159,38 @@ class TestEntrepidus(unittest.TestCase):
         pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected)
 
 
+    def test_searching_diageo_sku(self):
+
+        df_sales = pd.DataFrame(columns=self.df_sales_columns)
+        df_pebac_product_reference = pd.DataFrame(columns=self.df_pebac_product_reference_columns)
+        df_entrepidus = pd.DataFrame(columns=self.df_entrepidus_columns)
+        df_expected = pd.DataFrame(columns=self.df_entrepidus_columns)
+        
+        df_pebac_product_reference['Dist_Code'] = ['123', '456']
+        df_pebac_product_reference['Product_store_id'] = ['444', '777']
+        df_pebac_product_reference['Diageo_Sku'] = ['XXX', 'LLL']
+        df_pebac_product_reference['Relevant'] = ['Y', 'Y']
+        df_pebac_product_reference['Scale'] = [4, 17]
+
+        #Setting indexes to the DataFrame df_pebac_product_reference
+        df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True) 
+        df_pebac_product_reference = df_pebac_product_reference[~df_pebac_product_reference.index.duplicated(keep='first')]
+
+        df_entrepidus['Diageo_dist_auxiliar_column'] = ['123', '456']
+        df_entrepidus['Chain SKU Code'] = ['444', '777']
+
+        df_expected['Diageo_dist_auxiliar_column'] = ['123', '456']
+        df_expected['Chain SKU Code'] = ['444', '777']
+        df_expected['Diageo SKU Code'] = ['XXX', 'LLL']
+        df_expected['Aux_product_relevance'] = ['Y', 'Y']
+
+        returned_df_entrepidus = Entrepidus_generator.searching_diageo_sku(df_sales, df_pebac_product_reference, df_entrepidus)
+
+        df_expected = df_expected.sort_index(axis=1, ascending=True)
+        returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
+
+        pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected)
+
+
 if __name__ == '__main__':
     unittest.main()
