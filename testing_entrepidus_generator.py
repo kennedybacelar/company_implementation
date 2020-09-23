@@ -233,5 +233,31 @@ class TestEntrepidus(unittest.TestCase):
         pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected, check_dtype=False)
 
 
+    def test_calculating_quantity(self):
+
+        df_pebac_product_reference = pd.DataFrame(columns=self.df_pebac_product_reference_columns)
+        df_entrepidus = pd.DataFrame(columns=self.df_entrepidus_columns)
+        df_expected = pd.DataFrame(columns=self.df_entrepidus_columns)
+
+        df_pebac_product_reference['Dist_Code'] = ['123']
+        df_pebac_product_reference['Product_store_id'] = ['xxx']
+        df_pebac_product_reference['Scale'] = 7.0
+
+        df_entrepidus['Diageo_dist_auxiliar_column'] = ['123']
+        df_entrepidus['Chain SKU Code'] = ['xxx']
+        df_entrepidus['Unit Sold'] = 3.0
+
+        df_expected['Diageo_dist_auxiliar_column'] = ['123']
+        df_expected['Chain SKU Code'] = ['xxx']
+        df_expected['Unit Sold'] = 21.0
+
+        returned_df_entrepidus = Entrepidus_generator.calculating_quantity(df_entrepidus, df_pebac_product_reference)
+
+        #Sorting columns to obtain same columns order to both parsed and expected DataFrames
+        df_expected = df_expected.sort_index(axis=1, ascending=True)
+        returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
+
+        pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected, check_dtype=False)
+
 if __name__ == '__main__':
     unittest.main()
