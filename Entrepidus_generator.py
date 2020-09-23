@@ -333,7 +333,7 @@ def calculating_quantity(df_entrepidus, df_pebac_product_reference):
             multiplicative_factor = 1
 
         try:
-            df_entrepidus.loc[( single_distributor , single_product ), 'Unit Sold'] = df_entrepidus.loc[( single_distributor , single_product ), 'Unit Sold'].multiply(multiplicative_factor)
+            df_entrepidus.loc[( single_distributor , single_product ), 'Unit Sold'] = df_entrepidus.loc[( single_distributor , single_product ), 'Unit Sold']*(multiplicative_factor)
         except Exception as error:
             print(error)
             logger.logger.error(' Error multiplication - Bottles por Physical Case - dist/product {}/{}'.format(single_distributor, single_product))
