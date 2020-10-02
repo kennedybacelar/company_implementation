@@ -279,14 +279,18 @@ class TestEntrepidus(unittest.TestCase):
         df_expected['Store Number'] = ['xxx', 'yyy']
         df_expected['Store Name'] = ['store ABC', '0000 - NOT FOUND']
 
+        expected_new_stores = ['456|yyy']
+
         res = Entrepidus_generator.getting_store_name(df_entrepidus, df_customer_catalogue)
         returned_df_entrepidus = res[0]
+        returned_new_stores = res[1]
 
         #Sorting columns to obtain same columns order to both parsed and expected DataFrames
         df_expected = df_expected.sort_index(axis=1, ascending=True)
         returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
 
         pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected, check_dtype=False)
+        self.assertEqual(returned_new_stores, expected_new_stores)
         
 
 if __name__ == '__main__':
