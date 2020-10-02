@@ -78,9 +78,9 @@ def loading_dataframes(system_paths, STR_indicator):
         df_sales = pd.read_csv(sales_file_path, index_col=False, names=df_sales_columns,sep=';', low_memory=False,
         dtype={ 'Quantity':str, 'Store code':str, 'Product Code':str, 'Invoice Date':str,
         'Total Amount WITH TAX':str, 'Total Amount WITHOUT TAX':str  }, header=sales_header).fillna('')
-    except:
+    except Exception as error:
         logger.logger.error('Not possible opening the file {}'.format(sales_file_path))
-        print('Not possible opening the file - {}'.format(sales_file_path))
+        print('{}\nNot possible opening the file - {}'.format(error, sales_file_path))
         sys.exit()
 
     #Loading Data Frame of (De->Para) / Product Customer -> Diageo SKU
@@ -88,32 +88,32 @@ def loading_dataframes(system_paths, STR_indicator):
         df_pebac_product_reference = pd.read_excel(pebac_master_data_product_file_path, converters = { 'Dist_Code': str, 'Product_store_id': str} ).fillna('')
         df_pebac_product_reference.set_index(['Dist_Code', 'Product_store_id'], inplace=True) 
         df_pebac_product_reference = df_pebac_product_reference[~df_pebac_product_reference.index.duplicated(keep='first')]       
-    except:
+    except Exception as error:
         logger.logger.info('Not possible opening the file / setting index {}'.format(pebac_master_data_product_file_path))
-        print('Not possible opening the file - {}'.format(pebac_master_data_product_file_path))
+        print('{}\nNot possible opening the file - {}'.format(error, pebac_master_data_product_file_path))
         sys.exit()
 
     #Loading Data Frame of Product Master Data
     try:
         df_product_master = pd.read_excel(product_master_path, dtype={ 'Material': str }).fillna('')      
-    except:
+    except Exception as error:
         logger.logger.info('Not possible opening the file {}'.format(product_master_path))
-        print('Not possible opening the file - {}'.format(product_master_path))
+        print('{}\nNot possible opening the file - {}'.format(error, product_master_path))
         sys.exit()
 
     #Loading Data Frame of Customer Catalog Per Country
     try:
         df_customer_catalog = pd.read_excel(customer_catalog_file_path, converters={ 'Distributor_id':str, 'Store_id':str } ).fillna('')       
-    except:
+    except Exception as error:
         logger.logger.info('Not possible opening the file {}'.format(customer_catalog_file_path))
-        print('Not possible opening the file - {}'.format(customer_catalog_file_path))
+        print('{}\nNot possible opening the file - {}'.format(error, customer_catalog_file_path))
         sys.exit()
     
     #Loading Data Frame of Distributors correct name and country
     try:
         df_dist_names = pd.read_excel(dist_names_file_path, dtype=str ).fillna('')
-    except:
-        print('Not possible opening file - {}'.format(dist_names_file_path))
+    except Exception as error:
+        print('{}\nNot possible opening file - {}'.format(error, dist_names_file_path))
         logger.logger.error('Not possible opening file - {}'.format(dist_names_file_path))
         sys.exit()
 
