@@ -368,7 +368,7 @@ def getting_store_name(df_entrepidus, df_customer_catalog):
     for single_distributor, unique_store in df_entrepidus.index.unique():
 
         try:
-            store_name = df_customer_catalog.loc[[(single_distributor, unique_store)], 'Store_name']
+            store_name = df_customer_catalog.loc[[(single_distributor, unique_store)], 'Store_name'].values.item()
         except:
             new_unique_store = single_distributor + '|' + unique_store
             new_stores.append(new_unique_store)
