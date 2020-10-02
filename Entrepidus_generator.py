@@ -384,18 +384,6 @@ def getting_store_name(df_entrepidus, df_customer_catalog):
 
     return [df_entrepidus, new_stores]
 
-
-#Filtering Period - Unused yet
-def filtering_period(df_entrepidus, previous_and_current_month_period):
-
-    current_month = previous_and_current_month_period[0]
-    previous_month = previous_and_current_month_period[1]
-
-    entrepidus_filtered_period = ((df_entrepidus['Date'].str[:6] == current_month) | (df_entrepidus['Date'].str[:6] == previous_month))
-    df_entrepidus = df_entrepidus.loc[entrepidus_filtered_period]
-
-    return df_entrepidus
-
 def creating_new_stores_dataframe():
 
     new_store_columns = ['Aux_column_dist_number', 'POS_ID', 'Store Nbr', 'Store Name', 'Chain', 'Commercial Group', 'Store/Business Type',
@@ -811,13 +799,6 @@ def main():
     except:
         logger.logger.error('Not possible executing function setting_df_entrepidus_and_sales')
         print('Not possible assigning dist_names_and_country to entrepidus')
-
-    try:
-        print('Filtering current and previous month...')
-        previous_and_current_month_period = get_previous_and_current_month_period()
-    except: 
-        logger.logger.error('Not possible executing function setting_df_entrepidus_and_sales')
-        print('Not possible executing function setting_df_entrepidus_and_sales')
 
     try:
         print('Searching Diageo Skus...')
