@@ -26,6 +26,8 @@ class TestEntrepidus(unittest.TestCase):
 
         cls.df_product_master_columns = ['Material', 'Description', 
             'Main Group', 'Subcategory', 'Brand', 'Brand Variant', 'Unit Size']
+        
+        cls.df_customer_catalogue_columns = ['Distributor_id', 'Store_id', 'Store_name']
 
 
     def test_getting_user_input(self):
@@ -258,6 +260,34 @@ class TestEntrepidus(unittest.TestCase):
         returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
 
         pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected, check_dtype=False)
+
+
+    def test_getting_store_name(self):
+        df_customer_catalogue = pd.DataFrame(columns=self.df_customer_catalogue_columns)
+        df_entrepidus = pd.DataFrame(columns=self.df_entrepidus_columns)
+        df_expected = pd.DataFrame(columns=self.df_entrepidus_columns)
+
+        df_customer_catalogue['Distributor_id'] = ['123']
+        df_customer_catalogue['Store_id'] = ['xxx']
+        df_customer_catalogue['Store_name'] = ['store ABC']
+
+        df_entrepidus['Diageo_dist_auxiliar_column'] = ['123', '456']
+        df_entrepidus['Store Number'] = ['xxx', 'yyy']
+        df_entrepidus['Store Name'] = ['', '']
+
+        df_expected['Diageo_dist_auxiliar_column'] = ['123', '456']
+        df_expected['Store Number'] = ['xxx', 'yyy']
+        df_expected['Store Name'] = ['store ABC', '0000 - NOT FOUND']
+
+        res = Entrepidus_generator.getting_store_name(df_entrepidus, df_customer_catalogue)
+        returned_df_entrepidus = res[0]
+
+        #Sorting columns to obtain same columns order to both parsed and expected DataFrames
+        df_expected = df_expected.sort_index(axis=1, ascending=True)
+        returned_df_entrepidus = returned_df_entrepidus.sort_index(axis=1, ascending=True)
+
+        pd.testing.assert_frame_equal(returned_df_entrepidus, df_expected, check_dtype=False)
+        
 
 if __name__ == '__main__':
     unittest.main()
